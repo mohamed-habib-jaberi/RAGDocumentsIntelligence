@@ -1,4 +1,4 @@
-# 06 — MongoDB Persistence for RAG Document Intelligence
+# 07 — Asset Tracking for RAG Document Intelligence
 
 RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds MongoDB persistence for projects and processed document chunks.
 
@@ -113,11 +113,17 @@ After upload, call `POST /api/v1/data/process/{project_id}` with the identifier 
 
 `chunk_size` defines the maximum fragment size; `overlap_size` repeats a portion of the previous chunk to preserve context.
 
-## 11. Persist Projects and Chunks
+## 11. Track File Assets
+
+Every successful upload now creates an `assets` collection record with the project ObjectId, server-side filename, file type, size, and upload timestamp. A compound index prevents two assets with the same filename in one project.
+
+Processing can now target one `file_id` or omit it to process every asset belonging to the project. Each stored chunk references both its project and source asset.
+
+## 12. Persist Projects and Chunks
 
 The first upload creates a project in MongoDB's `projects` collection. Processing inserts chunk batches into `chunks`, including their text, metadata, order, and owning project ObjectId. With `do_reset: true`, existing project chunks are removed before the new insertion.
 
-## 12. Test with Postman
+## 13. Test with Postman
 
 Import `assets/rag-document-intelligence.postman_collection.json`, set `api` to `http://127.0.0.1:8000`, then run requests in order: `API configuration endpoint`, `Upload document`, and `Process document`.
 
