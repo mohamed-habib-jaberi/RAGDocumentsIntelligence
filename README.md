@@ -1,4 +1,4 @@
-# 02 — Foundation API de RAG Document Intelligence
+# 03 — API configurée et routes modulaires de RAG Document Intelligence
 
 RAG Document Intelligence est un système RAG (*Retrieval-Augmented Generation*) destiné aux questions-réponses fondées sur des documents. Cette étape introduit la première API HTTP ; les étapes suivantes ajouteront l'import de documents, les embeddings, la recherche sémantique et la génération de réponses.
 
@@ -55,7 +55,13 @@ APP_VERSION="0.1"
 OPENAI_API_KEY=""
 ```
 
-## 6. Démarrer l'API FastAPI
+## 6. Charger la configuration et organiser les routes
+
+`main.py` charge `.env` avec `python-dotenv`, puis enregistre les routeurs FastAPI. La première route est placée dans `routes/base.py` sous le préfixe versionné `/api/v1` : cette convention permet d'ajouter de nouvelles versions d'API sans casser les clients existants.
+
+La route `GET /api/v1/` retourne le nom et la version définis dans `.env` : elle confirme donc simultanément que l'API et la configuration sont correctement chargées.
+
+## 7. Démarrer l'API FastAPI
 
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
@@ -64,14 +70,14 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 Vérifier le premier endpoint :
 
 ```bash
-curl http://127.0.0.1:8000/welcome
+curl http://127.0.0.1:8000/api/v1/
 ```
 
 Cet endpoint confirme que le serveur est disponible avant l'ajout des routes métier.
 
-## 7. Tester avec Postman
+## 8. Tester avec Postman
 
-Importer `assets/rag-document-intelligence.postman_collection.json`, définir la variable `api` sur `http://127.0.0.1:8000`, puis exécuter la requête `Welcome endpoint`.
+Importer `assets/rag-document-intelligence.postman_collection.json`, définir la variable `api` sur `http://127.0.0.1:8000`, puis exécuter la requête `API configuration endpoint`.
 
 ## Principes du projet
 

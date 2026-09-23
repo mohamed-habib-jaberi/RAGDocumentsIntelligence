@@ -5,17 +5,18 @@
   },
   "item": [
     {
-      "name": "Welcome endpoint",
+      "name": "API configuration endpoint",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{api}}/welcome",
+          "raw": "{{api}}/api/v1/",
           "host": [
             "{{api}}"
           ],
           "path": [
-            "welcome"
+            "api",
+            "v1"
           ]
         }
       },

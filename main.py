@@ -1,4 +1,11 @@
 from fastapi import FastAPI
+from dotenv import load_dotenv
+
+# Load the local configuration before the route modules read application values.
+# The .env file is ignored by Git and therefore keeps secrets out of the codebase.
+load_dotenv(".env")
+
+from routes import base
 
 # FastAPI is the HTTP entry point of RAG Document Intelligence. Future steps
 # will add document ingestion, semantic search and answer-generation routes.
@@ -7,10 +14,6 @@ app = FastAPI(
     version="0.1.0",
 )
 
-
-@app.get("/welcome", tags=["health"])
-def welcome() -> dict[str, str]:
-    """Return a minimal health response to validate that the API is running."""
-    return {
-        "message": "RAG Document Intelligence API is running."
-    }
+# Routers keep each API domain in its own module. This lets the application grow
+# without concentrating document, search and generation endpoints in main.py.
+app.include_router(base.base_router)

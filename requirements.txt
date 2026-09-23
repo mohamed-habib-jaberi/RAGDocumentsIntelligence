@@ -4,3 +4,5 @@ fastapi==0.110.2
 uvicorn[standard]==0.29.0
 # Prise en charge des formulaires multipart, nécessaire aux futurs uploads de fichiers.
 python-multipart==0.0.9
+# Charge les variables locales de .env au démarrage, sans exposer les secrets dans Git.
+python-dotenv==1.0.1
