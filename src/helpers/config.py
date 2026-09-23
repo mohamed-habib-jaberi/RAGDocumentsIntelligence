@@ -26,9 +26,10 @@ class Settings(BaseSettings):
     GENERATION_MODEL_ID: str | None = None
     EMBEDDING_MODEL_ID: str | None = None
     EMBEDDING_MODEL_SIZE: int | None = None
-    INPUT_DEFAULT_MAX_CHARACTERS: int = 1024
-    GENERATION_DEFAULT_MAX_TOKENS: int = 200
-    GENERATION_DEFAULT_TEMPERATURE: float = 0.1
+    # Keep the original tutorial variable names for backwards compatibility.
+    INPUT_DAFAULT_MAX_CHARACTERS: int = 1024
+    GENERATION_DAFAULT_MAX_TOKENS: int = 200
+    GENERATION_DAFAULT_TEMPERATURE: float = 0.1
     VECTOR_DB_BACKEND: str = "QDRANT"
     VECTOR_DB_PATH: str = "qdrant_db"
     VECTOR_DB_DISTANCE_METHOD: str = "cosine"
