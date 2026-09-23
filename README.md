@@ -1,8 +1,8 @@
 # 01 — Architecture et initialisation de RAG Document Intelligence
 
-Cette première étape pose le socle du projet. Aucun serveur ni pipeline RAG n'est encore implémenté : l'objectif est de créer un environnement Python reproductible et de séparer la configuration sensible du code source.
+RAG Document Intelligence est un système RAG (*Retrieval-Augmented Generation*) destiné aux questions-réponses fondées sur des documents. Cette première étape met en place l'environnement reproductible et les contrats de configuration ; aucun serveur ni pipeline RAG n'est encore exécuté.
 
-## Architecture cible
+## 1. Architecture cible
 
 ```text
 Client HTTP
@@ -15,30 +15,39 @@ FastAPI (API du projet)
     └── Base vectorielle : recherche sémantique
 ```
 
-Les étapes suivantes implémenteront progressivement ces composants. À ce stade, seuls les contrats d'environnement sont définis.
+## 2. Prérequis
 
-## Prérequis
+- Python 3.8 ou supérieur ;
+- Conda ou [Miniconda](https://docs.anaconda.com/free/miniconda/#quick-command-line-install), recommandé pour isoler les dépendances.
 
-- Python 3.8 ou supérieur
-- Conda ou Miniconda (recommandé pour isoler les dépendances)
-
-## Créer l'environnement Python
+## 3. Créer et activer l'environnement Python
 
 ```bash
 conda create -n rag-document-intelligence python=3.8
 conda activate rag-document-intelligence
+```
+
+Optionnellement, rendre l'invite de commande plus lisible :
+
+```bash
+export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
+```
+
+## 4. Installer les dépendances
+
+```bash
 pip install -r requirements.txt
 ```
 
-`requirements.txt` fixe les versions de FastAPI, Uvicorn et du support d'upload. Cela évite que deux développeurs installent des versions incompatibles.
+Les versions sont verrouillées afin que tous les développeurs utilisent des dépendances compatibles. FastAPI définira les routes, Uvicorn exécutera l'application et `python-multipart` préparera les futurs uploads de fichiers.
 
-## Configurer les variables d'environnement
+## 5. Configurer l'environnement
 
 ```bash
 cp .env.example .env
 ```
 
-Le fichier `.env` est local et ne doit jamais être ajouté à Git. Il contiendra notamment la clé API du fournisseur LLM. Le modèle `.env.example`, lui, est versionné afin que chaque développeur connaisse les variables attendues sans exposer de secret.
+Le fichier `.env` est local et ignoré par Git. Il doit contenir les secrets, tandis que `.env.example` documente les variables attendues sans exposer de clé.
 
 ```env
 APP_NAME="RAG Document Intelligence"
@@ -46,53 +55,8 @@ APP_VERSION="0.1"
 OPENAI_API_KEY=""
 ```
 
-## Principes retenus
+## Principes du projet
 
-- **Configuration hors du code** : les secrets et paramètres propres à une machine passent par `.env`.
-- **Versions verrouillées** : les bibliothèques sont épinglées pour rendre l'environnement reproductible.
-- **Évolution incrémentale** : chaque branche numérotée ajoute une responsabilité précise au projet.
-
-## Guide d'installation complet
-
-RAG Document Intelligence is a modular implementation of a Retrieval-Augmented Generation (RAG) system for document-based question answering.
-
-## Requirements
-
-- Python 3.8 or later
-
-#### Install Python using MiniConda
-
-1) Download and install MiniConda from [here](https://docs.anaconda.com/free/miniconda/#quick-command-line-install)
-2) Create a new environment using the following command:
-
-```bash
-$ conda create -n rag-document-intelligence python=3.8
-```
-
-3) Activate the environment:
-
-```bash
-$ conda activate rag-document-intelligence
-```
-
-### (Optional) Setup you command line interface for better readability
-
-```bash
-export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
-```
-
-## Installation
-
-### Install the required packages
-
-```bash
-$ pip install -r requirements.txt
-```
-
-### Setup the environment variables
-
-```bash
-$ cp .env.example .env
-```
-
-Set your environment variables in the `.env` file. Like `OPENAI_API_KEY` value.
+- **Configuration hors du code** : secrets et paramètres de machine sont conservés dans `.env`.
+- **Versions verrouillées** : l'environnement est reproductible.
+- **Évolution incrémentale** : chaque branche numérotée ajoute une responsabilité précise.
