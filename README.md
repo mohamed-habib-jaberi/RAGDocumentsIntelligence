@@ -1,4 +1,4 @@
-# 04 — Import de documents de RAG Document Intelligence
+# 05 — Traitement des documents de RAG Document Intelligence
 
 RAG Document Intelligence est un système RAG (*Retrieval-Augmented Generation*) destiné aux questions-réponses fondées sur des documents. Cette étape introduit la première API HTTP ; les étapes suivantes ajouteront l'import de documents, les embeddings, la recherche sémantique et la génération de réponses.
 
@@ -86,9 +86,23 @@ curl -F "file=@document.pdf" http://127.0.0.1:8000/api/v1/data/upload/demo-proje
 
 Les documents importés ne sont pas versionnés : `src/assets/.gitignore` protège les données d'exécution.
 
-## 9. Tester avec Postman
+## 9. Traiter un document importé
 
-Importer `assets/rag-document-intelligence.postman_collection.json`, définir la variable `api` sur `http://127.0.0.1:8000`, puis exécuter les requêtes `API configuration endpoint` et `Upload document`.
+Après l'import, appeler `POST /api/v1/data/process/{project_id}` avec l'identifiant retourné par l'endpoint d'upload. Le contrôleur lit un fichier TXT ou PDF, préserve les métadonnées de source et produit des chunks avec recouvrement. Ces chunks serviront à l'indexation vectorielle dans l'étape suivante.
+
+```json
+{
+  "file_id": "identifiant-retourné-par-upload.pdf",
+  "chunk_size": 500,
+  "overlap_size": 50
+}
+```
+
+`chunk_size` définit la taille maximale d'un fragment et `overlap_size` répète une partie du fragment précédent pour conserver le contexte entre deux chunks.
+
+## 10. Tester avec Postman
+
+Importer `assets/rag-document-intelligence.postman_collection.json`, définir la variable `api` sur `http://127.0.0.1:8000`, puis exécuter les requêtes dans l'ordre : `API configuration endpoint`, `Upload document`, puis `Process document`.
 
 ## Principes du projet
 

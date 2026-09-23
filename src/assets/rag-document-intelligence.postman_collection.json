@@ -44,6 +44,25 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "Process document",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file_id\": \"replace-with-uploaded-file-id\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50\n}"
+        },
+        "url": {
+          "raw": "{{api}}/api/v1/data/process/{{project_id}}",
+          "host": ["{{api}}"],
+          "path": ["api", "v1", "data", "process", "{{project_id}}"]
+        }
+      },
+      "response": []
     }
   ],
   "variable": [
