@@ -1,4 +1,4 @@
-# 03 — API configurée et routes modulaires de RAG Document Intelligence
+# 04 — Import de documents de RAG Document Intelligence
 
 RAG Document Intelligence est un système RAG (*Retrieval-Augmented Generation*) destiné aux questions-réponses fondées sur des documents. Cette étape introduit la première API HTTP ; les étapes suivantes ajouteront l'import de documents, les embeddings, la recherche sémantique et la génération de réponses.
 
@@ -33,9 +33,10 @@ Optionnellement, rendre l'invite de commande plus lisible :
 export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
 ```
 
-## 4. Installer les dépendances
+## 4. Entrer dans le dossier applicatif et installer les dépendances
 
 ```bash
+cd src
 pip install -r requirements.txt
 ```
 
@@ -75,9 +76,19 @@ curl http://127.0.0.1:8000/api/v1/
 
 Cet endpoint confirme que le serveur est disponible avant l'ajout des routes métier.
 
-## 8. Tester avec Postman
+## 8. Importer un document
 
-Importer `assets/rag-document-intelligence.postman_collection.json`, définir la variable `api` sur `http://127.0.0.1:8000`, puis exécuter la requête `API configuration endpoint`.
+L'endpoint `POST /api/v1/data/upload/{project_id}` accepte les fichiers TXT et PDF déclarés dans `.env`. Il valide le type MIME et la taille, nettoie le nom fourni par le client, crée un dossier par projet et écrit le fichier de façon asynchrone dans `src/assets/files/`.
+
+```bash
+curl -F "file=@document.pdf" http://127.0.0.1:8000/api/v1/data/upload/demo-project
+```
+
+Les documents importés ne sont pas versionnés : `src/assets/.gitignore` protège les données d'exécution.
+
+## 9. Tester avec Postman
+
+Importer `assets/rag-document-intelligence.postman_collection.json`, définir la variable `api` sur `http://127.0.0.1:8000`, puis exécuter les requêtes `API configuration endpoint` et `Upload document`.
 
 ## Principes du projet
 
