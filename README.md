@@ -52,6 +52,22 @@ OPENAI_API_KEY=""
 - **Versions verrouillées** : les bibliothèques sont épinglées pour rendre l'environnement reproductible.
 - **Évolution incrémentale** : chaque branche numérotée ajoute une responsabilité précise au projet.
 
+## API FastAPI
+
+Cette étape introduit le premier point d'entrée HTTP. Il vérifie que le serveur est correctement installé avant l'ajout des routes métier du système RAG.
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Une fois le serveur démarré, appeler l'endpoint de vérification :
+
+```bash
+curl http://127.0.0.1:8000/welcome
+```
+
+La collection Postman correspondante est disponible dans `assets/rag-document-intelligence.postman_collection.json`. Définir la variable `api` avec `http://127.0.0.1:8000` avant d'exécuter la requête `Welcome endpoint`.
+
 ## Guide d'installation complet
 
 RAG Document Intelligence is a modular implementation of a Retrieval-Augmented Generation (RAG) system for document-based question answering.
