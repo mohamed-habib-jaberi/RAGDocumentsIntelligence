@@ -1,53 +1,17 @@
-# 03 — API configurée et routes modulaires de RAG Document Intelligence
+# 03 — Configured API and Modular Routes for RAG Document Intelligence
 
-RAG Document Intelligence est un système RAG (*Retrieval-Augmented Generation*) destiné aux questions-réponses fondées sur des documents. Cette étape introduit la première API HTTP ; les étapes suivantes ajouteront l'import de documents, les embeddings, la recherche sémantique et la génération de réponses.
+This stage introduces a configured FastAPI application with versioned, modular routes.
 
-## 1. Architecture cible
-
-```text
-Client HTTP
-    │
-    ▼
-FastAPI (API du projet)
-    ├── LLM : génération de réponses
-    ├── Embeddings : représentation vectorielle des textes
-    ├── MongoDB : projets, fichiers et chunks
-    └── Base vectorielle : recherche sémantique
-```
-
-## 2. Prérequis
-
-- Python 3.8 ou supérieur ;
-- Conda ou [Miniconda](https://docs.anaconda.com/free/miniconda/#quick-command-line-install), recommandé pour isoler les dépendances.
-
-## 3. Créer et activer l'environnement Python
+## 1. Setup
 
 ```bash
 conda create -n rag-document-intelligence python=3.8
 conda activate rag-document-intelligence
-```
-
-Optionnellement, rendre l'invite de commande plus lisible :
-
-```bash
-export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
-```
-
-## 4. Installer les dépendances
-
-```bash
 pip install -r requirements.txt
-```
-
-Les versions sont verrouillées afin que tous les développeurs utilisent des dépendances compatibles. FastAPI définit les routes, Uvicorn exécute l'application et `python-multipart` prépare les futurs uploads de fichiers.
-
-## 5. Configurer l'environnement
-
-```bash
 cp .env.example .env
 ```
 
-Le fichier `.env` est local et ignoré par Git. Il doit contenir les secrets, tandis que `.env.example` documente les variables attendues sans exposer de clé.
+Python 3.8+ and [Miniconda](https://docs.anaconda.com/free/miniconda/#quick-command-line-install) are recommended. The local `.env` file keeps secrets out of Git.
 
 ```env
 APP_NAME="RAG Document Intelligence"
@@ -55,32 +19,23 @@ APP_VERSION="0.1"
 OPENAI_API_KEY=""
 ```
 
-## 6. Charger la configuration et organiser les routes
+## 2. Configuration and Routing
 
-`main.py` charge `.env` avec `python-dotenv`, puis enregistre les routeurs FastAPI. La première route est placée dans `routes/base.py` sous le préfixe versionné `/api/v1` : cette convention permet d'ajouter de nouvelles versions d'API sans casser les clients existants.
+`main.py` loads `.env` through `python-dotenv` before registering routers. Version-one routes live below `/api/v1`, which makes future API versions possible without breaking existing clients.
 
-La route `GET /api/v1/` retourne le nom et la version définis dans `.env` : elle confirme donc simultanément que l'API et la configuration sont correctement chargées.
+`GET /api/v1/` returns the configured application name and version as a lightweight health check.
 
-## 7. Démarrer l'API FastAPI
+## 3. Start and Test the API
 
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Vérifier le premier endpoint :
-
-```bash
 curl http://127.0.0.1:8000/api/v1/
 ```
 
-Cet endpoint confirme que le serveur est disponible avant l'ajout des routes métier.
+Import `assets/rag-document-intelligence.postman_collection.json`, set `api` to `http://127.0.0.1:8000`, then run `API configuration endpoint`.
 
-## 8. Tester avec Postman
+## Project Principles
 
-Importer `assets/rag-document-intelligence.postman_collection.json`, définir la variable `api` sur `http://127.0.0.1:8000`, puis exécuter la requête `API configuration endpoint`.
-
-## Principes du projet
-
-- **Configuration hors du code** : secrets et paramètres de machine sont conservés dans `.env`.
-- **Versions verrouillées** : l'environnement est reproductible.
-- **Évolution incrémentale** : chaque branche numérotée ajoute une responsabilité précise.
+- Keep environment-specific settings outside source code.
+- Pin dependencies for reproducible setups.
+- Deliver one focused capability per numbered branch.
