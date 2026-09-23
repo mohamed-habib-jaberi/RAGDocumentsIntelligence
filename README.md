@@ -1,53 +1,53 @@
-# 01 — Architecture et initialisation de RAG Document Intelligence
+# 01 — Architecture and Initialization of RAG Document Intelligence
 
-RAG Document Intelligence est un système RAG (*Retrieval-Augmented Generation*) destiné aux questions-réponses fondées sur des documents. Cette première étape met en place l'environnement reproductible et les contrats de configuration ; aucun serveur ni pipeline RAG n'est encore exécuté.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This first stage establishes a reproducible environment and configuration contracts; no server or RAG pipeline runs yet.
 
-## 1. Architecture cible
+## 1. Target Architecture
 
 ```text
-Client HTTP
+HTTP Client
     │
     ▼
-FastAPI (API du projet)
-    ├── LLM : génération de réponses
-    ├── Embeddings : représentation vectorielle des textes
-    ├── MongoDB : projets, fichiers et chunks
-    └── Base vectorielle : recherche sémantique
+FastAPI (project API)
+    ├── LLM: answer generation
+    ├── Embeddings: text vector representation
+    ├── MongoDB: projects, files, and chunks
+    └── Vector database: semantic search
 ```
 
-## 2. Prérequis
+## 2. Prerequisites
 
-- Python 3.8 ou supérieur ;
-- Conda ou [Miniconda](https://docs.anaconda.com/free/miniconda/#quick-command-line-install), recommandé pour isoler les dépendances.
+- Python 3.8 or later;
+- Conda or [Miniconda](https://docs.anaconda.com/free/miniconda/#quick-command-line-install), recommended for dependency isolation.
 
-## 3. Créer et activer l'environnement Python
+## 3. Create and Activate the Python Environment
 
 ```bash
 conda create -n rag-document-intelligence python=3.8
 conda activate rag-document-intelligence
 ```
 
-Optionnellement, rendre l'invite de commande plus lisible :
+Optionally, make the terminal prompt easier to read:
 
 ```bash
 export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
 ```
 
-## 4. Installer les dépendances
+## 4. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Les versions sont verrouillées afin que tous les développeurs utilisent des dépendances compatibles. FastAPI définira les routes, Uvicorn exécutera l'application et `python-multipart` préparera les futurs uploads de fichiers.
+Versions are pinned so all developers use compatible dependencies.
 
-## 5. Configurer l'environnement
+## 5. Configure the Environment
 
 ```bash
 cp .env.example .env
 ```
 
-Le fichier `.env` est local et ignoré par Git. Il doit contenir les secrets, tandis que `.env.example` documente les variables attendues sans exposer de clé.
+`.env` is local and ignored by Git. It stores secrets, while `.env.example` documents required variables safely.
 
 ```env
 APP_NAME="RAG Document Intelligence"
@@ -55,8 +55,8 @@ APP_VERSION="0.1"
 OPENAI_API_KEY=""
 ```
 
-## Principes du projet
+## Project Principles
 
-- **Configuration hors du code** : secrets et paramètres de machine sont conservés dans `.env`.
-- **Versions verrouillées** : l'environnement est reproductible.
-- **Évolution incrémentale** : chaque branche numérotée ajoute une responsabilité précise.
+- Keep machine-specific settings and secrets in `.env`.
+- Pin versions to make environments reproducible.
+- Add one focused responsibility per numbered branch.
