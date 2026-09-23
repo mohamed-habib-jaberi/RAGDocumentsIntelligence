@@ -1,4 +1,4 @@
-# 07 — Asset Tracking for RAG Document Intelligence
+# 08 — LLM Provider Abstraction for RAG Document Intelligence
 
 RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds MongoDB persistence for projects and processed document chunks.
 
@@ -119,11 +119,15 @@ Every successful upload now creates an `assets` collection record with the proje
 
 Processing can now target one `file_id` or omit it to process every asset belonging to the project. Each stored chunk references both its project and source asset.
 
-## 12. Persist Projects and Chunks
+## 12. Configure an LLM Provider
+
+The provider layer separates application logic from vendor SDKs. Configure OpenAI, Cohere, or an OpenAI-compatible endpoint through `.env`, then select the generation and embedding models. The same interface exposes `generate_text` and `embed_text` to future RAG services.
+
+## 13. Persist Projects and Chunks
 
 The first upload creates a project in MongoDB's `projects` collection. Processing inserts chunk batches into `chunks`, including their text, metadata, order, and owning project ObjectId. With `do_reset: true`, existing project chunks are removed before the new insertion.
 
-## 13. Test with Postman
+## 14. Test with Postman
 
 Import `assets/rag-document-intelligence.postman_collection.json`, set `api` to `http://127.0.0.1:8000`, then run requests in order: `API configuration endpoint`, `Upload document`, and `Process document`.
 

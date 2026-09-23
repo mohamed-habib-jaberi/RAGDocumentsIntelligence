@@ -18,3 +18,6 @@ PyMuPDF==1.24.3
 motor==3.4.0
 # Pydantic helpers and BSON ObjectId support for MongoDB documents.
 pydantic-mongo==2.3.0
+# Supported cloud LLM clients.
+openai==1.35.13
+cohere==5.5.8
