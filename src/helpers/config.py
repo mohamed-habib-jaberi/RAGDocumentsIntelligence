@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     INPUT_DEFAULT_MAX_CHARACTERS: int = 1024
     GENERATION_DEFAULT_MAX_TOKENS: int = 200
     GENERATION_DEFAULT_TEMPERATURE: float = 0.1
+    VECTOR_DB_BACKEND: str = "QDRANT"
+    VECTOR_DB_PATH: str = "qdrant_db"
+    VECTOR_DB_DISTANCE_METHOD: str = "cosine"
 
     model_config = SettingsConfigDict(env_file=".env")
 

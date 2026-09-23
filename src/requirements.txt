@@ -21,3 +21,5 @@ pydantic-mongo==2.3.0
 # Supported cloud LLM clients.
 openai==1.35.13
 cohere==5.5.8
+# Embedded local vector database for semantic similarity search.
+qdrant-client==1.10.1
