@@ -54,7 +54,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"file_id\": \"replace-with-uploaded-file-id\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50\n}"
+          "raw": "{\n  \"file_id\": \"replace-with-uploaded-file-id\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": true\n}"
         },
         "url": {
           "raw": "{{api}}/api/v1/data/process/{{project_id}}",

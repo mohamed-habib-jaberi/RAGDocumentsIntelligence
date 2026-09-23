@@ -14,3 +14,7 @@ aiofiles==23.2.1
 langchain==0.1.20
 # PDF parser used by the PyMuPDF document loader.
 PyMuPDF==1.24.3
+# Asynchronous MongoDB driver used by FastAPI route handlers.
+motor==3.4.0
+# Pydantic helpers and BSON ObjectId support for MongoDB documents.
+pydantic-mongo==2.3.0
