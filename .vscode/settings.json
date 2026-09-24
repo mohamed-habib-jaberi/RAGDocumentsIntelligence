@@ -1,4 +1,4 @@
 {
     "python.languageServer": "Pylance",
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv-system/bin/python"
+    "python.defaultInterpreterPath": "${env:HOME}/miniconda3/envs/rag/bin/python"
 }

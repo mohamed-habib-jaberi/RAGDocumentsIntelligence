@@ -23,8 +23,8 @@ FastAPI (project API)
 ## 3. Create and Activate the Python Environment
 
 ```bash
-conda create -n rag-document-intelligence python=3.8
-conda activate rag-document-intelligence
+conda create -n rag python=3.9 -y
+conda activate rag
 ```
 
 Optionally, make the terminal prompt easier to read:
