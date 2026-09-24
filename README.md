@@ -17,13 +17,13 @@ FastAPI (project API)
 
 ## 2. Prerequisites
 
-- Python 3.8 or later;
+- Python 3.11 or later (one environment compatible with every tutorial stage);
 - Conda or [Miniconda](https://docs.anaconda.com/free/miniconda/#quick-command-line-install), recommended for dependency isolation.
 
 ## 3. Create and Activate the Python Environment
 
 ```bash
-conda create -n rag python=3.9 -y
+conda create -n rag python=3.11 -y
 conda activate rag
 ```
 
