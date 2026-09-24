@@ -1,40 +1,34 @@
-"""Typed application settings loaded from the local .env file."""
-
-from functools import lru_cache
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 class Settings(BaseSettings):
-    """Validate the application configuration once and expose typed values."""
 
     APP_NAME: str
     APP_VERSION: str
-    OPENAI_API_KEY: str | None = None
+    OPENAI_API_KEY: str
 
-    FILE_ALLOWED_TYPES: list[str]
+    FILE_ALLOWED_TYPES: list
     FILE_MAX_SIZE: int
     FILE_DEFAULT_CHUNK_SIZE: int
 
     MONGODB_URL: str
     MONGODB_DATABASE: str
 
-    GENERATION_BACKEND: str = "OPENAI"
-    EMBEDDING_BACKEND: str = "OPENAI"
-    OPENAI_API_URL: str | None = None
-    COHERE_API_KEY: str | None = None
-    GENERATION_MODEL_ID: str | None = None
-    EMBEDDING_MODEL_ID: str | None = None
-    EMBEDDING_MODEL_SIZE: int | None = None
-    # Keep the original tutorial variable names for backwards compatibility.
-    INPUT_DAFAULT_MAX_CHARACTERS: int = 1024
-    GENERATION_DAFAULT_MAX_TOKENS: int = 200
-    GENERATION_DAFAULT_TEMPERATURE: float = 0.1
+    GENERATION_BACKEND: str
+    EMBEDDING_BACKEND: str
 
-    model_config = SettingsConfigDict(env_file=".env")
+    OPENAI_API_KEY: str = None
+    OPENAI_API_URL: str = None
+    COHERE_API_KEY: str = None
 
+    GENERATION_MODEL_ID: str = None
+    EMBEDDING_MODEL_ID: str = None
+    EMBEDDING_MODEL_SIZE: int = None
+    INPUT_DAFAULT_MAX_CHARACTERS: int = None
+    GENERATION_DAFAULT_MAX_TOKENS: int = None
+    GENERATION_DAFAULT_TEMPERATURE: float = None
 
-@lru_cache
-def get_settings() -> Settings:
-    """Return cached settings so every request uses the same validated config."""
+    class Config:
+        env_file = ".env"
+
+def get_settings():
     return Settings()
