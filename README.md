@@ -1,6 +1,6 @@
-# 14 — PGVector Vector Store for RAG Document Intelligence
+# 15 — Containerized Deployment and Observability for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds PGVector as an asynchronous PostgreSQL vector store while retaining Qdrant as an alternative backend.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds a Docker deployment stack with Nginx, PostgreSQL/PGVector, Qdrant, Prometheus, Grafana, and application metrics.
 
 ## 1. Target Architecture
 
@@ -196,6 +196,19 @@ once the number of records reaches `VECTOR_DB_PGVEC_INDEX_THRESHOLD`.
 
 `QDRANT` remains selectable through the same setting. Embedding calls are now
 batched and vector-store operations are asynchronous for both providers.
+
+## 21. Containerized Deployment and Monitoring
+
+The Docker stack runs the FastAPI application behind Nginx, provisions PGVector
+and Qdrant, and exposes Prometheus metrics for Grafana dashboards. Copy the
+files under `docker/env/` from their `.env.example.*` templates before starting
+the stack.
+
+The application container accepts the same `LLM_MODE` profile switch. Use a
+cloud key, a host Ollama URL (`http://host.docker.internal:11434/v1` on macOS),
+or a Colab/ngrok URL. See [docker/README.md](docker/README.md) for deployment
+steps and [the Ollama guide](docs/OLLAMA_LOCAL_AND_COLAB.md) for the profile
+configuration.
 
 ## Project Principles
 
