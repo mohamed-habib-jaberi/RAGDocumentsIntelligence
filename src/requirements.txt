@@ -1,12 +1,6 @@
-# Framework HTTP : définit les routes et les contrats de l'API.
 fastapi==0.110.2
-# Serveur ASGI : exécute l'application FastAPI en développement et en production.
 uvicorn[standard]==0.29.0
-# Prise en charge des formulaires multipart, nécessaire aux futurs uploads de fichiers.
 python-multipart==0.0.9
-# Charge les variables locales de .env au démarrage, sans exposer les secrets dans Git.
 python-dotenv==1.0.1
-# Settings model that validates values loaded from .env.
 pydantic-settings==2.2.1
-# Non-blocking file writes used by the upload endpoint.
 aiofiles==23.2.1
