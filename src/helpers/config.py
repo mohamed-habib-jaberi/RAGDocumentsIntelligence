@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     CELERY_TASK_TIME_LIMIT: int = 600
     CELERY_TASK_ACKS_LATE: bool = True
     CELERY_WORKER_CONCURRENCY: int = 2
+    CELERY_FLOWER_PASSWORD: str | None = None
 
     # Use the same URL for a Mac server or an ngrok URL that exposes Colab.
     OLLAMA_API_URL: str = "http://localhost:11434/v1"

@@ -1,6 +1,6 @@
-# 16 — Background Document Processing for RAG Document Intelligence
+# 17 — Celery Workflows and Monitoring for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage moves long-running document processing to a Celery background task using RabbitMQ and Redis.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds Celery workflows for processing and indexing, scheduled maintenance, execution tracking, and Flower monitoring.
 
 ## 1. Target Architecture
 
@@ -227,6 +227,17 @@ celery -A celery_app.celery_app worker --loglevel=INFO --queues=file_processing
 
 The task worker uses the same `LLM_MODE` configuration as the API, so it can
 process embeddings with Ollama, Colab/ngrok, or the cloud profile.
+
+## 23. Celery Workflows, Beat, and Flower
+
+The Docker stack now starts separate Celery worker and Beat services, plus the
+Flower dashboard on port `5555`. Workflow tasks coordinate document processing
+and vector indexing; execution records are stored through new Alembic
+migrations, and scheduled maintenance removes old task records.
+
+After copying `docker/env/.env.example.app`, set a strong
+`CELERY_FLOWER_PASSWORD`. The Celery workers inherit the same Ollama/Cloud
+profile selection as the API container.
 
 ## Project Principles
 
