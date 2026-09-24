@@ -1,8 +1,6 @@
-# 11 — RAG Answer Generation Checkpoint for RAG Document Intelligence
+# 12 — RAG Template and Route Fixes for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This checkpoint retains semantic indexing, retrieval, prompt templates, and answer generation on top of the existing document pipeline.
-
-> This tutorial checkpoint intentionally uses the same functional implementation as the preceding stage. It provides a stable point for reviewing and testing the complete RAG answer flow.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage corrects the RAG answer flow so that the user query is included in the locale-specific prompt and the shared template parser is supplied to every NLP controller instance.
 
 ## 1. Target Architecture
 
@@ -149,6 +147,10 @@ The available operations are:
 - `POST /api/v1/nlp/index/answer/{project_id}`: retrieve context and generate an answer.
 
 The template language is selected through `PRIMARY_LANG` and falls back to `DEFAULT_LANG`. Configure the LLM and vector database variables in `src/.env` before starting the API.
+
+## 17. Template and Route Corrections
+
+The answer templates now interpolate the submitted question before the answer section. Both the indexing and collection-information routes also receive the application template parser, so every `NLPController` is constructed with the dependencies expected by the controller contract.
 
 ## Project Principles
 
