@@ -45,10 +45,14 @@ Versions are pinned so every developer uses compatible dependencies. FastAPI def
 ## 5. Configure the Environment
 
 ```bash
+cd src
 cp .env.example .env
 ```
 
-The `.env` file is local and ignored by Git. It stores secrets, while `.env.example` documents the expected variables without exposing keys.
+`src/.env` is your personal local configuration and is ignored by Git. Store
+secrets, passwords, and the current Ollama/ngrok URL there. `src/.env.example`
+is the versioned template: it documents every required variable with safe
+placeholder values and must never contain a real secret.
 
 ```env
 APP_NAME="RAG Document Intelligence"
@@ -73,7 +77,9 @@ MONGODB_DATABASE="rag_document_intelligence"
 
 ## 7. Load Configuration and Organize Routes
 
-`main.py` loads `.env` through `python-dotenv`, initializes a shared asynchronous MongoDB client, and registers FastAPI routers. The base route is versioned under `/api/v1`, allowing future API versions without breaking existing clients.
+`main.py` loads `.env`, initializes the shared asynchronous PostgreSQL session
+factory, and registers FastAPI routers. The base route is versioned under
+`/api/v1`, allowing future API versions without breaking existing clients.
 
 `GET /api/v1/` returns the application name and version defined in `.env`, confirming both API availability and configuration loading.
 
