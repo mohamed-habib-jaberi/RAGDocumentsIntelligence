@@ -1,9 +1,19 @@
 services:
   mongodb:
     image: mongo:7-jammy
-    container_name: rag-document-intelligence-mongodb
+    
+    container_name: mongodb
+    
     ports:
       - "27007:27017"
+    
     volumes:
       - ./mongodb:/data/db
-    restart: unless-stopped
+    
+    networks:
+      - backend
+    
+    restart: always
+
+networks:
+  backend:

@@ -1,15 +1,17 @@
-"""Schema persisted for each logical document project."""
-
-from typing import Annotated
-
-from bson import ObjectId
-from pydantic import BaseModel, ConfigDict, Field
-
+from pydantic import BaseModel, Field, validator
+from typing import Optional
+from bson.objectid import ObjectId
 
 class Project(BaseModel):
-    """Map a human-readable project identifier to a MongoDB ObjectId."""
+    id: Optional[ObjectId] = Field(None, alias="_id")
+    project_id: str = Field(..., min_length=1)
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
+    @validator('project_id')
+    def validate_project_id(cls, value):
+        if not value.isalnum():
+            raise ValueError('project_id must be alphanumeric')
+        
+        return value
 
-    id: ObjectId | None = Field(default=None, alias="_id")
-    project_id: Annotated[str, Field(min_length=1, pattern=r"^[A-Za-z0-9_-]+$")]
+    class Config:
+        arbitrary_types_allowed = True
