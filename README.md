@@ -1,6 +1,8 @@
-# 10 — RAG Answer Generation for RAG Document Intelligence
+# 11 — RAG Answer Generation Checkpoint for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds semantic indexing, retrieval, prompt templates, and answer generation on top of the existing document pipeline.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This checkpoint retains semantic indexing, retrieval, prompt templates, and answer generation on top of the existing document pipeline.
+
+> This tutorial checkpoint intentionally uses the same functional implementation as the preceding stage. It provides a stable point for reviewing and testing the complete RAG answer flow.
 
 ## 1. Target Architecture
 
