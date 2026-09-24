@@ -1,6 +1,3 @@
-"""Application data contracts and response enums."""
-
 from .enums.ResponseEnums import ResponseSignal
-from .enums.ProcessingEnum import ProcessingExtension
+from .enums.ProcessingEnum import ProcessingEnum
 
-__all__ = ["ProcessingExtension", "ResponseSignal"]
