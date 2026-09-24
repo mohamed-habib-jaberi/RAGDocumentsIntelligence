@@ -17,14 +17,14 @@ FastAPI (project API)
 
 ## 2. Prerequisites
 
-- Python 3.8 or later;
+- Python 3.11 or later;
 - Conda or [Miniconda](https://docs.anaconda.com/free/miniconda/#quick-command-line-install), recommended for dependency isolation.
 
 ## 3. Create and Activate the Python Environment
 
 ```bash
-conda create -n rag-document-intelligence python=3.8
-conda activate rag-document-intelligence
+conda create -n rag python=3.11 -y
+conda activate rag
 ```
 
 Optionally, make the terminal prompt easier to read:
