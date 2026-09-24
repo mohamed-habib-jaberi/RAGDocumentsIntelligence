@@ -1,6 +1,6 @@
-# 12 — RAG Template and Route Fixes for RAG Document Intelligence
+# 13 — PostgreSQL, SQLAlchemy, and Alembic for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage corrects the RAG answer flow so that the user query is included in the locale-specific prompt and the shared template parser is supplied to every NLP controller instance.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage migrates application persistence from MongoDB to PostgreSQL through asynchronous SQLAlchemy models and Alembic migrations.
 
 ## 1. Target Architecture
 
@@ -151,6 +151,22 @@ The template language is selected through `PRIMARY_LANG` and falls back to `DEFA
 ## 17. Template and Route Corrections
 
 The answer templates now interpolate the submitted question before the answer section. Both the indexing and collection-information routes also receive the application template parser, so every `NLPController` is constructed with the dependencies expected by the controller contract.
+
+## 18. PostgreSQL Persistence and Migrations
+
+Configure `POSTGRES_USERNAME`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, and `POSTGRES_MAIN_DATABASE` in `src/.env`. The FastAPI startup hook creates an asynchronous SQLAlchemy session factory; project, asset, and chunk repositories use it for persistence.
+
+Start the PostgreSQL container from `docker/`, then initialize the schema:
+
+```bash
+docker compose up -d pgvector
+cd ../src/models/db_schemes/minirag
+cp alembic.ini.example alembic.ini
+# Set sqlalchemy.url in alembic.ini, then run:
+alembic upgrade head
+```
+
+The Alembic directory is kept with this tutorial step so schema changes can be generated and applied predictably.
 
 ## Project Principles
 
