@@ -54,6 +54,14 @@ class Settings(BaseSettings):
     PRIMARY_LANG: str = "en"
     DEFAULT_LANG: str = "en"
 
+    # Background document-processing configuration.
+    CELERY_BROKER_URL: str | None = None
+    CELERY_RESULT_BACKEND: str | None = None
+    CELERY_TASK_SERIALIZER: str = "json"
+    CELERY_TASK_TIME_LIMIT: int = 600
+    CELERY_TASK_ACKS_LATE: bool = True
+    CELERY_WORKER_CONCURRENCY: int = 2
+
     # Use the same URL for a Mac server or an ngrok URL that exposes Colab.
     OLLAMA_API_URL: str = "http://localhost:11434/v1"
     OLLAMA_GENERATION_MODEL_ID: str = "llama3.2"
