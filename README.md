@@ -175,7 +175,7 @@ Use Python 3.10 or later, then create an isolated environment:
 
 ```bash
 conda create -n rag-document-intelligence python=3.10
-conda activate rag-document-intelligence
+conda activate rag
 cd src
 pip install -r requirements.txt
 ```
