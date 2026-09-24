@@ -1,6 +1,6 @@
-# 13 — PostgreSQL, SQLAlchemy, and Alembic for RAG Document Intelligence
+# 13b — Ollama Local and Colab LLM Profiles for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage migrates application persistence from MongoDB to PostgreSQL through asynchronous SQLAlchemy models and Alembic migrations.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds a switchable Ollama profile for local macOS and Google Colab/ngrok deployments, while retaining the existing cloud-provider profile.
 
 ## 1. Target Architecture
 
@@ -167,6 +167,19 @@ alembic upgrade head
 ```
 
 The Alembic directory is kept with this tutorial step so schema changes can be generated and applied predictably.
+
+## 19. Run with Ollama or Cloud LLMs
+
+Set `LLM_MODE="OLLAMA"` in `src/.env` to use the OpenAI-compatible Ollama API.
+For a local Mac server, use `OLLAMA_API_URL="http://localhost:11434/v1"`. For
+Colab, replace it with the ngrok HTTPS URL followed by `/v1`.
+
+Set `LLM_MODE="CLOUD"` and provide `CLOUD_OPENAI_API_KEY` to use OpenAI or a
+compatible cloud endpoint. The profile selection maps the chosen values onto
+the existing provider factory, so routes and controllers do not need to change.
+
+See [the Ollama local and Colab guide](docs/OLLAMA_LOCAL_AND_COLAB.md) for the
+model downloads, Colab startup cells, ngrok setup, and safety guidance.
 
 ## Project Principles
 
