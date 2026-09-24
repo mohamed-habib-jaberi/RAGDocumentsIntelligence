@@ -80,7 +80,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"file_id\": null,\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 1\n}",
+          "raw": "{\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 1\n}",
           "options": {
             "raw": {
               "language": "json"
