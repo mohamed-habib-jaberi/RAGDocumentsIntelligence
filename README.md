@@ -8,22 +8,152 @@ with either Ollama or a cloud OpenAI-compatible provider.
 This `main` branch is the complete, cumulative application. Each numbered
 branch is a tutorial checkpoint that introduces one capability.
 
-For a detailed French walkthrough of the components and complete RAG pipeline,
-see [Architecture détaillée](docs/ARCHITECTURE_FR.md).
-
 ## Architecture
 
-```text
-Client
-  │
-  ▼
-FastAPI API ──► Celery workflows ──► RabbitMQ / Redis
-  │                    │
-  │                    ├── PostgreSQL + PGVector
-  │                    └── Qdrant (optional vector backend)
-  │
-  └── LLM profile: Ollama local / Ollama Colab-ngrok / Cloud
+```mermaid
+flowchart TB
+    Client["Client / Postman"] --> Nginx["Nginx"]
+    Nginx --> API["FastAPI API\nsrc/main.py"]
+
+    API --> Routes["API routes\nroutes/base.py, data.py, nlp.py"]
+    Routes --> Controllers["Business logic\ncontrollers"]
+    Routes --> Queue["Celery tasks"]
+
+    Controllers --> Files["Uploaded files\nsrc/assets/files"]
+    Controllers --> PostgreSQL["PostgreSQL\nprojects, assets, chunks, task records"]
+    Controllers --> VectorDB["PGVector or Qdrant\nsemantic retrieval"]
+    Controllers --> LLM["Ollama or Cloud\ngeneration + embeddings"]
+
+    Queue --> RabbitMQ["RabbitMQ\ntask broker"]
+    Queue --> Redis["Redis\ntask results"]
+    Queue --> PostgreSQL
+    Queue --> VectorDB
+    Queue --> LLM
+
+    API --> Metrics["Prometheus metrics"]
+    Metrics --> Prometheus["Prometheus"]
+    Prometheus --> Grafana["Grafana"]
+    Queue --> Flower["Flower\nCelery monitoring"]
 ```
+
+### Layers and responsibilities
+
+```text
+routes → controllers / Celery tasks → models / stores → external services
+```
+
+| Layer | Responsibility |
+| --- | --- |
+| `src/main.py` | Creates FastAPI and initializes PostgreSQL, the LLM clients, vector store, templates, and metrics. |
+| `src/routes/` | Exposes versioned HTTP endpoints under `/api/v1` and returns API responses. |
+| `src/controllers/` | Handles synchronous business rules: file validation, storage, chunking, prompt construction, and RAG orchestration. |
+| `src/tasks/` | Handles long-running Celery work: document processing, indexing, workflows, and maintenance. |
+| `src/models/` | Persists projects, assets, chunks, and task executions through asynchronous SQLAlchemy sessions. |
+| `src/stores/llm/` | Provides one interface for Ollama/OpenAI-compatible APIs and Cohere. |
+| `src/stores/vectordb/` | Provides one interface for PGVector and Qdrant. |
+| `src/utils/` | Implements application metrics and task idempotency support. |
+| `docker/` | Defines the multi-service deployment, monitoring, and local environment templates. |
+
+At application startup, these shared dependencies are attached to `app` and
+retrieved by routes through `request.app`:
+
+| Dependency | Role |
+| --- | --- |
+| `app.db_client` | Creates asynchronous PostgreSQL sessions. |
+| `app.generation_client` | Generates the final natural-language answer. |
+| `app.embedding_client` | Converts documents and questions into vectors. |
+| `app.vectordb_client` | Creates, fills, and searches PGVector or Qdrant collections. |
+| `app.template_parser` | Loads RAG prompt templates for the configured language. |
+
+### Communication flow: document to answer
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as FastAPI
+    participant F as Files / PostgreSQL
+    participant C as Celery
+    participant V as PGVector or Qdrant
+    participant L as Ollama or Cloud
+
+    U->>A: Upload TXT/PDF for a project
+    A->>F: Save file and asset record
+    U->>A: Request processing
+    A->>C: Queue task and return task_id
+    C->>F: Read file and create chunks
+    C->>F: Persist chunks
+    C->>L: Create embeddings in batches
+    C->>V: Index texts, vectors, and metadata
+    U->>A: Ask a question
+    A->>L: Create query embedding
+    A->>V: Retrieve closest chunks
+    A->>L: Build RAG prompt and generate answer
+    A-->>U: Grounded answer
+```
+
+#### 1. Upload and asset tracking
+
+`DataController` validates the MIME type, size, and filename before writing the
+file to `src/assets/files/<project_id>/`. PostgreSQL stores an asset record that
+links the generated filename, file type, and file size to its project.
+
+#### 2. Background document processing
+
+Processing is queued rather than executed inside the HTTP request. The Celery
+worker loads TXT/PDF content, splits it into chunks, preserves available
+metadata, and persists `DataChunk` records. With `do_reset=1`, existing chunks
+and their associated vectors can be cleared before processing again.
+
+RabbitMQ transports task messages, Redis stores task state and results, and
+Flower displays worker and task activity.
+
+#### 3. Embedding and vector indexing
+
+The embedding client creates vectors for chunk batches. A vector record keeps a
+reference to the original chunk so the matching text can be recovered later.
+
+| Backend | Role |
+| --- | --- |
+| `PGVECTOR` | Stores vectors in PostgreSQL alongside relational data. |
+| `QDRANT` | Stores vectors in a dedicated vector-search database. |
+
+`VECTOR_DB_BACKEND` selects the backend. Collection names include both the
+project identifier and embedding dimension to avoid mixing incompatible vectors.
+
+#### 4. RAG retrieval and answer generation
+
+For a user question, the application creates a query embedding, retrieves the
+nearest chunks, renders the language-specific RAG template, and sends the final
+prompt to the generation model. The answer is therefore based on retrieved
+project documents rather than only the model's general knowledge.
+
+### LLM profile selection
+
+```mermaid
+flowchart LR
+    Mode["LLM_MODE"] -->|"OLLAMA"| Ollama["OLLAMA_API_URL\nMac or Colab/ngrok"]
+    Mode -->|"CLOUD"| Cloud["CLOUD_OPENAI_API_KEY\nOpenAI-compatible cloud"]
+    Ollama --> Factory["LLMProviderFactory"]
+    Cloud --> Factory
+    Factory --> Generation["Generation model"]
+    Factory --> Embeddings["Embedding model"]
+```
+
+Only `LLM_MODE` changes when switching environments. Ollama's default models
+are `llama3.2` for generation and `nomic-embed-text` for embeddings. The same
+provider contract works with local Ollama, an ngrok URL from Colab, or cloud.
+
+### Infrastructure, observability, and safety
+
+`docker/docker-compose.yml` orchestrates FastAPI, Nginx, PostgreSQL/PGVector,
+Qdrant, RabbitMQ, Redis, Celery Worker, Celery Beat, Flower, Prometheus,
+Grafana, and exporters. Alembic versions the PostgreSQL schema, including task
+execution tables.
+
+Prometheus collects HTTP metrics, Grafana visualizes them, and Flower monitors
+Celery. Keep `.env`, `docker/env/.env.*`, `alembic.ini`, passwords, cloud keys,
+and ngrok URLs out of Git. Stop a Colab/ngrok tunnel after testing because its
+public URL exposes the Ollama endpoint.
 
 ## Capabilities
 
