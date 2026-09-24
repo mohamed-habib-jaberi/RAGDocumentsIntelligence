@@ -72,7 +72,21 @@
       "name": "Process document",
       "request": {
         "method": "POST",
-        "header": [],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file_id\": null,\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
           "raw": "{{baseUrl}}/api/v1/data/process/{{projectId}}",
           "host": [
@@ -93,7 +107,21 @@
       "name": "Index project chunks",
       "request": {
         "method": "POST",
-        "header": [],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"do_reset\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
           "raw": "{{baseUrl}}/api/v1/nlp/index/push/{{projectId}}",
           "host": [
