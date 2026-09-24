@@ -1,57 +1,259 @@
 {
-	"info": {
-		"_postman_id": "1f67dedb-1b93-4639-9f96-7fe8681693f4",
-		"name": "mini-rag-app",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "854486",
-		"_collection_link": "https://www.postman.com/gold-water-645258/workspace/mini-rag-app/collection/854486-1f67dedb-1b93-4639-9f96-7fe8681693f4?action=share&source=collection_link&creator=854486"
-	},
-	"item": [
-		{
-			"name": "welcome-request",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{api}}/welcome",
-					"host": [
-						"{{api}}"
-					],
-					"path": [
-						"welcome"
-					]
-				}
-			},
-			"response": []
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "api",
-			"value": "http://127.0.0.1:8000",
-			"type": "string"
-		}
-	]
+  "info": {
+    "name": "RAG Document Intelligence — Stage 12",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Requests available in this tutorial stage."
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "API configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api}}/api/v1/",
+              "host": [
+                "{{api}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                ""
+              ]
+            },
+            "description": "Confirms that the API is running."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload document",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "TXT or PDF document"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{api}}/api/v1/data/upload/{{project_id}}",
+              "host": [
+                "{{api}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "data",
+                "upload",
+                "{{project_id}}"
+              ]
+            },
+            "description": "Select a local TXT or PDF file before sending the request."
+          },
+          "response": []
+        },
+        {
+          "name": "Process document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_id\": \"uploaded-file-id.pdf\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{api}}/api/v1/data/process/{{project_id}}",
+              "host": [
+                "{{api}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "data",
+                "process",
+                "{{project_id}}"
+              ]
+            },
+            "description": "For stage 12, processing runs in the API request."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "RAG and semantic search",
+      "item": [
+        {
+          "name": "Index project chunks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"do_reset\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{api}}/api/v1/nlp/index/push/{{project_id}}",
+              "host": [
+                "{{api}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nlp",
+                "index",
+                "push",
+                "{{project_id}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get index information",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api}}/api/v1/nlp/index/info/{{project_id}}",
+              "host": [
+                "{{api}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nlp",
+                "index",
+                "info",
+                "{{project_id}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Semantic search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"What information is available in this project?\",\n  \"limit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{api}}/api/v1/nlp/index/search/{{project_id}}",
+              "host": [
+                "{{api}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nlp",
+                "index",
+                "search",
+                "{{project_id}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "RAG answer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Summarize the most relevant information.\",\n  \"limit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{api}}/api/v1/nlp/index/answer/{{project_id}}",
+              "host": [
+                "{{api}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nlp",
+                "index",
+                "answer",
+                "{{project_id}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "api",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "project_id",
+      "value": "1",
+      "type": "string"
+    }
+  ]
 }
