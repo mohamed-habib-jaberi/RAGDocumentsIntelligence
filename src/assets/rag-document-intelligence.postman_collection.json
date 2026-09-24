@@ -1,57 +1,93 @@
 {
-	"info": {
-		"_postman_id": "1f67dedb-1b93-4639-9f96-7fe8681693f4",
-		"name": "mini-rag-app",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "854486",
-		"_collection_link": "https://www.postman.com/gold-water-645258/workspace/mini-rag-app/collection/854486-1f67dedb-1b93-4639-9f96-7fe8681693f4?action=share&source=collection_link&creator=854486"
-	},
-	"item": [
-		{
-			"name": "welcome-request",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{api}}/welcome",
-					"host": [
-						"{{api}}"
-					],
-					"path": [
-						"welcome"
-					]
-				}
-			},
-			"response": []
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "api",
-			"value": "http://127.0.0.1:8000",
-			"type": "string"
-		}
-	]
+  "info": {
+    "name": "RAG Document Intelligence — Stage 7",
+    "description": "Requests available at this tutorial stage. Set the collection variables before sending requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "sample-project",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "API configuration",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            ""
+          ]
+        },
+        "description": "Returns the API application configuration."
+      }
+    },
+    {
+      "name": "Upload document",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "",
+              "description": "Choose a supported document in Postman."
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/data/upload/{{projectId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "data",
+            "upload",
+            "{{projectId}}"
+          ]
+        },
+        "description": "Uploads a document for the selected project."
+      }
+    },
+    {
+      "name": "Process document",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/data/process/{{projectId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "data",
+            "process",
+            "{{projectId}}"
+          ]
+        },
+        "description": "Processes the uploaded documents for the project."
+      }
+    }
+  ]
 }
