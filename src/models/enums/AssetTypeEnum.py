@@ -1,7 +1,6 @@
-"""Asset categories stored for a project."""
-
 from enum import Enum
 
+class AssetTypeEnum(Enum):
 
-class AssetType(str, Enum):
     FILE = "file"
+    

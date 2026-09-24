@@ -1,10 +1,7 @@
-"""Common base class for MongoDB-backed models."""
-
-from motor.motor_asyncio import AsyncIOMotorDatabase
-
+from helpers.config import get_settings, Settings
 
 class BaseDataModel:
-    """Store the shared asynchronous database handle supplied by FastAPI."""
 
-    def __init__(self, db_client: AsyncIOMotorDatabase) -> None:
+    def __init__(self, db_client: object):
         self.db_client = db_client
+        self.app_settings = get_settings()

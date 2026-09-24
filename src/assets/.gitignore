@@ -1,6 +1,2 @@
-# Uploaded documents are runtime data and must never be committed.
-files/*
-!files/.gitkeep
-# Local Qdrant persistence is runtime data.
-database/*
-!database/.gitkeep
+files
+database
