@@ -25,9 +25,11 @@ async def startup_db_client():
 async def shutdown_db_client():
     app.mongo_conn.close()
 
-app.router.lifespan.on_startup.append(startup_db_client)
-app.router.lifespan.on_shutdown.append(shutdown_db_client)
+# Register lifecycle handlers through FastAPI's supported public API.
+# Accessing ``app.router.lifespan.on_startup`` no longer works with the
+# FastAPI version pinned by this tutorial.
+app.on_event("startup")(startup_db_client)
+app.on_event("shutdown")(shutdown_db_client)
 
 app.include_router(base.base_router)
 app.include_router(data.data_router)
-
