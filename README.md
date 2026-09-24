@@ -1,6 +1,6 @@
-# 09 — Qdrant Vector Store for RAG Document Intelligence
+# 10 — RAG Answer Generation for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds MongoDB persistence for projects and processed document chunks.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds semantic indexing, retrieval, prompt templates, and answer generation on top of the existing document pipeline.
 
 ## 1. Target Architecture
 
@@ -134,6 +134,19 @@ The first upload creates a project in MongoDB's `projects` collection. Processin
 ## 15. Test with Postman
 
 Import `assets/rag-document-intelligence.postman_collection.json`, set `api` to `http://127.0.0.1:8000`, then run requests in order: `API configuration endpoint`, `Upload document`, and `Process document`.
+
+## 16. Index, Search, and Answer with RAG
+
+Stage 10 adds the `/api/v1/nlp` router. It indexes persisted chunks in Qdrant, retrieves semantically related chunks, and uses locale-specific templates to build a prompt for the configured generation provider.
+
+The available operations are:
+
+- `POST /api/v1/nlp/index/push/{project_id}`: create or reset a project vector collection and index its chunks;
+- `GET /api/v1/nlp/index/info/{project_id}`: inspect the vector collection;
+- `POST /api/v1/nlp/index/search/{project_id}`: retrieve matching chunks;
+- `POST /api/v1/nlp/index/answer/{project_id}`: retrieve context and generate an answer.
+
+The template language is selected through `PRIMARY_LANG` and falls back to `DEFAULT_LANG`. Configure the LLM and vector database variables in `src/.env` before starting the API.
 
 ## Project Principles
 
