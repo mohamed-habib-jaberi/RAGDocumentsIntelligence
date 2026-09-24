@@ -12,7 +12,7 @@
     },
     {
       "key": "projectId",
-      "value": "sample-project",
+      "value": "1",
       "type": "string"
     }
   ],
@@ -145,7 +145,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"query\": \"What is the main topic of the document?\",\n  \"limit\": 5\n}",
+          "raw": "{\n  \"text\": \"What is the main topic of the document?\",\n  \"limit\": 5\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -181,7 +181,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"query\": \"Summarize the key points from the documents.\"\n}",
+          "raw": "{\n  \"text\": \"Summarize the key points from the documents.\",\n  \"limit\": 5\n}",
           "options": {
             "raw": {
               "language": "json"
