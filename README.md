@@ -1,6 +1,6 @@
-# 15 — Containerized Deployment and Observability for RAG Document Intelligence
+# 16 — Background Document Processing for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds a Docker deployment stack with Nginx, PostgreSQL/PGVector, Qdrant, Prometheus, Grafana, and application metrics.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage moves long-running document processing to a Celery background task using RabbitMQ and Redis.
 
 ## 1. Target Architecture
 
@@ -209,6 +209,24 @@ cloud key, a host Ollama URL (`http://host.docker.internal:11434/v1` on macOS),
 or a Colab/ngrok URL. See [docker/README.md](docker/README.md) for deployment
 steps and [the Ollama guide](docs/OLLAMA_LOCAL_AND_COLAB.md) for the profile
 configuration.
+
+## 22. Background Document Processing with Celery
+
+The process endpoint now queues work instead of processing documents in the HTTP
+request. RabbitMQ carries tasks and Redis stores task results. Copy
+`docker/env/.env.example.rabbitmq` and `.env.example.redis` to their local
+`.env.*` equivalents, then keep their credentials aligned with the Celery URLs
+in `docker/env/.env.app`.
+
+Start the worker separately after the broker and database services are ready:
+
+```bash
+cd src
+celery -A celery_app.celery_app worker --loglevel=INFO --queues=file_processing
+```
+
+The task worker uses the same `LLM_MODE` configuration as the API, so it can
+process embeddings with Ollama, Colab/ngrok, or the cloud profile.
 
 ## Project Principles
 

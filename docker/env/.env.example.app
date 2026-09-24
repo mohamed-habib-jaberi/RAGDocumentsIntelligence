@@ -11,12 +11,8 @@ POSTGRES_HOST="pgvector"
 POSTGRES_PORT=5432
 POSTGRES_MAIN_DATABASE="minirag"
 
-# Select one LLM profile. CLOUD is the safe container default: set its key in
-# docker/env/.env.app, which is ignored by Git.
+# Choose CLOUD, or OLLAMA for a Mac-hosted/Colab-ngrok Ollama endpoint.
 LLM_MODE="CLOUD"
-
-# For Ollama running on the Docker host (macOS), use host.docker.internal.
-# For Colab, replace the URL with the ngrok HTTPS URL followed by /v1.
 OLLAMA_API_URL="http://host.docker.internal:11434/v1"
 OLLAMA_GENERATION_MODEL_ID="llama3.2"
 OLLAMA_EMBEDDING_MODEL_ID="nomic-embed-text"
@@ -42,3 +38,12 @@ VECTOR_DB_PGVEC_INDEX_THRESHOLD=100
 
 PRIMARY_LANG="en"
 DEFAULT_LANG="en"
+
+# Background processing inside the Docker network. Keep these values aligned
+# with .env.rabbitmq and .env.redis after copying the templates.
+CELERY_BROKER_URL="amqp://rag_user:change-me@rabbitmq:5672/rag_vhost"
+CELERY_RESULT_BACKEND="redis://:change-me@redis:6379/0"
+CELERY_TASK_SERIALIZER="json"
+CELERY_TASK_TIME_LIMIT=600
+CELERY_TASK_ACKS_LATE=false
+CELERY_WORKER_CONCURRENCY=2
