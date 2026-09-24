@@ -4,6 +4,10 @@ This project uses Ollama through its OpenAI-compatible `/v1` API. The same
 application configuration works with an Ollama server on the Mac or one exposed
 from Google Colab through ngrok.
 
+## Notebook
+
+Use the prepared [Google Colab notebook](https://colab.research.google.com/drive/1jNm-8W5WVd7KFRtrKBFelFGyvM_trtPd) to install Ollama, start the server, pull models, and create the ngrok tunnel.
+
 ## 1. Switch the application
 
 Copy `src/.env.example` to `src/.env` and use one profile at a time:
