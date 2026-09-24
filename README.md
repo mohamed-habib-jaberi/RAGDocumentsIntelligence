@@ -8,6 +8,9 @@ with either Ollama or a cloud OpenAI-compatible provider.
 This `main` branch is the complete, cumulative application. Each numbered
 branch is a tutorial checkpoint that introduces one capability.
 
+For a detailed French walkthrough of the components and complete RAG pipeline,
+see [Architecture détaillée](docs/ARCHITECTURE_FR.md).
+
 ## Architecture
 
 ```text
