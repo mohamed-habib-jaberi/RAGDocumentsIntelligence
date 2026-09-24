@@ -7,8 +7,12 @@ aiofiles==23.2.1
 langchain==0.1.20
 PyMuPDF==1.24.3
 motor==3.4.0
+# Motor 3.4 imports a PyMongo symbol removed in later releases.
+pymongo==4.7.3
 pydantic-mongo==2.3.0
 openai==1.35.13
+# OpenAI 1.35 passes the deprecated `proxies` argument removed by httpx 0.28.
+httpx==0.27.2
 cohere==5.5.8
 qdrant-client==1.10.1
 SQLAlchemy==2.0.36
