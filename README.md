@@ -1,6 +1,6 @@
-# 13b — Ollama Local and Colab LLM Profiles for RAG Document Intelligence
+# 14 — PGVector Vector Store for RAG Document Intelligence
 
-RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds a switchable Ollama profile for local macOS and Google Colab/ngrok deployments, while retaining the existing cloud-provider profile.
+RAG Document Intelligence is a Retrieval-Augmented Generation (RAG) system for document-grounded question answering. This stage adds PGVector as an asynchronous PostgreSQL vector store while retaining Qdrant as an alternative backend.
 
 ## 1. Target Architecture
 
@@ -186,6 +186,16 @@ the existing provider factory, so routes and controllers do not need to change.
 
 See [the Ollama local and Colab guide](docs/OLLAMA_LOCAL_AND_COLAB.md) for the
 model downloads, Colab startup cells, ngrok setup, and safety guidance.
+
+## 20. Store Vectors with PGVector
+
+Set `VECTOR_DB_BACKEND="PGVECTOR"` to keep embeddings in PostgreSQL. On startup,
+the application enables the `vector` extension and creates a collection table
+whose vector dimension matches the active embedding model. The index is created
+once the number of records reaches `VECTOR_DB_PGVEC_INDEX_THRESHOLD`.
+
+`QDRANT` remains selectable through the same setting. Embedding calls are now
+batched and vector-store operations are asynchronous for both providers.
 
 ## Project Principles
 

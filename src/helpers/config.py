@@ -38,15 +38,18 @@ class Settings(BaseSettings):
     COHERE_API_KEY: str | None = None
 
     GENERATION_MODEL_ID: str | None = None
+    GENERATION_MODEL_ID_LITERAL: list[str] | None = None
     EMBEDDING_MODEL_ID: str | None = None
     EMBEDDING_MODEL_SIZE: int | None = None
     INPUT_DAFAULT_MAX_CHARACTERS: int = 1024
     GENERATION_DAFAULT_MAX_TOKENS: int = 200
     GENERATION_DAFAULT_TEMPERATURE: float = 0.1
 
-    VECTOR_DB_BACKEND: str = "QDRANT"
+    VECTOR_DB_BACKEND_LITERAL: list[str] | None = None
+    VECTOR_DB_BACKEND: str = "PGVECTOR"
     VECTOR_DB_PATH: str = "qdrant_db"
     VECTOR_DB_DISTANCE_METHOD: str = "cosine"
+    VECTOR_DB_PGVEC_INDEX_THRESHOLD: int = 100
 
     PRIMARY_LANG: str = "en"
     DEFAULT_LANG: str = "en"
