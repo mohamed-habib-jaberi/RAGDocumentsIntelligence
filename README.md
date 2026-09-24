@@ -171,10 +171,10 @@ public URL exposes the Ollama endpoint.
 
 ### 1. Install dependencies
 
-Use Python 3.10 or later, then create an isolated environment:
+Use Python 3.11 or later, then create an isolated environment:
 
 ```bash
-conda create -n rag-document-intelligence python=3.10
+conda create -n rag python=3.11 -y
 conda activate rag
 cd src
 pip install -r requirements.txt
