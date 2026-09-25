@@ -1,8 +1,10 @@
-from celery_app import celery_app, get_setup_utils
 import asyncio
-from utils.idempotency_manager import IdempotencyManager
-
 import logging
+
+from celery_app import celery_app
+from helpers.config import get_settings
+from infrastructure.persistence import create_persistence
+from utils.idempotency_manager import IdempotencyManager
 
 logger = logging.getLogger(__name__)
 
@@ -20,21 +22,13 @@ def clean_celery_executions_table(self):
 
 async def _clean_celery_executions_table(task_instance):
 
-    persistence, vectordb_client = None, None
+    persistence = None
 
     try:
-        (
-            persistence,
-            llm_provider_factory,
-            vectordb_provider_factory,
-            generation_client,
-            embedding_client,
-            vectordb_client,
-            template_parser,
-        ) = await get_setup_utils()
+        persistence = await create_persistence(get_settings())
 
         # Create idempotency manager
-        idempotency_manager = IdempotencyManager(persistence)
+        idempotency_manager = IdempotencyManager(persistence.task_executions)
 
         logger.warning("cleaning !!!")
         _ = await idempotency_manager.cleanup_old_tasks(5)
@@ -49,7 +43,5 @@ async def _clean_celery_executions_table(task_instance):
             if persistence:
                 await persistence.close()
 
-            if vectordb_client:
-                await vectordb_client.disconnect()
         except Exception as e:
             logger.error(f"Task failed while cleaning: {str(e)}")

@@ -44,8 +44,20 @@ PERSISTENCE_BACKEND="postgresql"
 ```
 
 The FastAPI container runs `alembic upgrade head` automatically only in
-PostgreSQL mode. Workers do not run migrations concurrently. MongoDB creates
-its required collection indexes during application startup.
+PostgreSQL or PGVector mode. Workers do not run migrations concurrently.
+MongoDB creates its required collection indexes during application startup.
+
+Choose the vector backend independently:
+
+```env
+VECTOR_DB_BACKEND="QDRANT"
+VECTOR_DB_URL="http://qdrant:6333"
+# or
+VECTOR_DB_BACKEND="PGVECTOR"
+```
+
+When PGVector is selected, the application uses the same `POSTGRES_*`
+connection settings and Alembic enables the `vector` extension.
 
 ### 2. Start the services
 

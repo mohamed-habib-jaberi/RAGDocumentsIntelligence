@@ -1,14 +1,13 @@
-from celery_app import celery_app, get_setup_utils
-from helpers.config import get_settings
 import asyncio
-from persistence import ChunkRecord
+import logging
+
+from celery_app import celery_app, get_setup_utils
+from controllers import NLPController, ProcessController
+from domain import ChunkRecord
+from helpers.config import get_settings
 from models import ResponseSignal
 from models.enums.AssetTypeEnum import AssetTypeEnum
-from controllers import ProcessController
-from controllers import NLPController
 from utils.idempotency_manager import IdempotencyManager
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +48,6 @@ async def _process_project_files(
     try:
         (
             persistence,
-            llm_provider_factory,
-            vectordb_provider_factory,
             generation_client,
             embedding_client,
             vectordb_client,
@@ -58,7 +55,7 @@ async def _process_project_files(
         ) = await get_setup_utils()
 
         # Create idempotency manager
-        idempotency_manager = IdempotencyManager(persistence)
+        idempotency_manager = IdempotencyManager(persistence.task_executions)
 
         # Define task arguments for idempotency check
         task_args = {
@@ -105,7 +102,7 @@ async def _process_project_files(
             execution_id=task_record.execution_id, status="STARTED"
         )
 
-        project = await persistence.get_or_create_project(project_id)
+        project = await persistence.projects.get_or_create(project_id)
 
         nlp_controller = NLPController(
             vectordb_client=vectordb_client,
@@ -116,7 +113,7 @@ async def _process_project_files(
 
         project_files_ids = {}
         if file_id:
-            asset_record = await persistence.get_asset(project.id, file_id)
+            asset_record = await persistence.assets.get(project.id, file_id)
 
             if asset_record is None:
                 task_instance.update_state(
@@ -138,7 +135,7 @@ async def _process_project_files(
             project_files_ids = {asset_record.id: asset_record.asset_name}
 
         else:
-            project_files = await persistence.list_assets(
+            project_files = await persistence.assets.list(
                 project.id, AssetTypeEnum.FILE.value
             )
 
@@ -178,7 +175,7 @@ async def _process_project_files(
             _ = await vectordb_client.delete_collection(collection_name=collection_name)
 
             # delete associated chunks
-            _ = await persistence.delete_chunks(project.id)
+            _ = await persistence.chunks.delete_by_project(project.id)
 
         for asset_id, file_id in project_files_ids.items():
             file_content = process_controller.get_file_content(file_id=file_id)
@@ -209,7 +206,7 @@ async def _process_project_files(
                 for i, chunk in enumerate(file_chunks)
             ]
 
-            no_records += await persistence.insert_chunks(file_chunks_records)
+            no_records += await persistence.chunks.insert_many(file_chunks_records)
             no_files += 1
 
         task_instance.update_state(

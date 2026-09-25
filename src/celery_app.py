@@ -1,17 +1,17 @@
 from celery import Celery
-from helpers.config import get_settings
-from persistence import create_persistence
-from stores.llm.LLMProviderFactory import LLMProviderFactory
-from stores.vectordb.VectorDBProviderFactory import VectorDBProviderFactory
-from stores.llm.templates.template_parser import TemplateParser
 
+from helpers.config import get_settings
+from infrastructure.persistence import create_persistence
+from stores.llm.LLMProviderFactory import LLMProviderFactory
+from stores.llm.templates.template_parser import TemplateParser
+from stores.vectordb.VectorDBProviderFactory import VectorDBProviderFactory
 
 settings = get_settings()
 
 
 async def get_setup_utils():
     settings = get_settings()
-    persistence_resources = await create_persistence(settings)
+    persistence = await create_persistence(settings)
 
     llm_provider_factory = LLMProviderFactory(settings)
     vectordb_provider_factory = VectorDBProviderFactory(config=settings)
@@ -34,9 +34,7 @@ async def get_setup_utils():
     )
 
     return (
-        persistence_resources.persistence,
-        llm_provider_factory,
-        vectordb_provider_factory,
+        persistence,
         generation_client,
         embedding_client,
         vectordb_client,

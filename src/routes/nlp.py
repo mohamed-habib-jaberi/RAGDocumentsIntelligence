@@ -1,11 +1,12 @@
-from fastapi import APIRouter, status, Request
+import logging
+
+from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
-from routes.schemes.nlp import PushRequest, SearchRequest
+
 from controllers import NLPController
 from models import ResponseSignal
+from routes.schemes.nlp import PushRequest, SearchRequest
 from tasks.data_indexing import index_data_content
-
-import logging
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -33,7 +34,7 @@ async def index_project(request: Request, project_id: int, push_request: PushReq
 @nlp_router.get("/index/info/{project_id}")
 async def get_project_index_info(request: Request, project_id: int):
 
-    project = await request.app.persistence.get_or_create_project(project_id)
+    project = await request.app.persistence.projects.get_or_create(project_id)
 
     nlp_controller = NLPController(
         vectordb_client=request.app.vectordb_client,
@@ -45,6 +46,12 @@ async def get_project_index_info(request: Request, project_id: int):
     collection_info = await nlp_controller.get_vector_db_collection_info(
         project=project
     )
+
+    if collection_info is None:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"signal": ResponseSignal.VECTORDB_COLLECTION_NOT_FOUND.value},
+        )
 
     return JSONResponse(
         content={
@@ -59,7 +66,7 @@ async def search_index(
     request: Request, project_id: int, search_request: SearchRequest
 ):
 
-    project = await request.app.persistence.get_or_create_project(project_id)
+    project = await request.app.persistence.projects.get_or_create(project_id)
 
     nlp_controller = NLPController(
         vectordb_client=request.app.vectordb_client,
@@ -89,7 +96,7 @@ async def search_index(
 @nlp_router.post("/index/answer/{project_id}")
 async def answer_rag(request: Request, project_id: int, search_request: SearchRequest):
 
-    project = await request.app.persistence.get_or_create_project(project_id)
+    project = await request.app.persistence.projects.get_or_create(project_id)
 
     nlp_controller = NLPController(
         vectordb_client=request.app.vectordb_client,

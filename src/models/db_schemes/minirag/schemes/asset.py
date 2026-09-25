@@ -1,9 +1,10 @@
-from .minirag_base import SQLAlchemyBase
-from sqlalchemy import Column, Integer, DateTime, func, String, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
-from sqlalchemy import Index
 import uuid
+
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import relationship
+
+from .minirag_base import SQLAlchemyBase
 
 
 class Asset(SQLAlchemyBase):
@@ -34,4 +35,5 @@ class Asset(SQLAlchemyBase):
     __table_args__ = (
         Index("ix_asset_project_id", asset_project_id),
         Index("ix_asset_type", asset_type),
+        Index("ux_asset_project_id_name", asset_project_id, asset_name, unique=True),
     )

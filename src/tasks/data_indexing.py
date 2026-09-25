@@ -1,10 +1,11 @@
-from celery_app import celery_app, get_setup_utils
 import asyncio
-from controllers import NLPController
-from models import ResponseSignal
+import logging
+
 from tqdm.auto import tqdm
 
-import logging
+from celery_app import celery_app, get_setup_utils
+from controllers import NLPController
+from models import ResponseSignal
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,6 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
     try:
         (
             persistence,
-            llm_provider_factory,
-            vectordb_provider_factory,
             generation_client,
             embedding_client,
             vectordb_client,
@@ -38,7 +37,7 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
 
         logger.warning("Setup utils were loaded!")
 
-        project = await persistence.get_or_create_project(project_id)
+        project = await persistence.projects.get_or_create(project_id)
 
         if not project:
             task_instance.update_state(
@@ -72,11 +71,11 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
         )
 
         # setup batching
-        total_chunks_count = await persistence.count_chunks(project.id)
+        total_chunks_count = await persistence.chunks.count(project.id)
         pbar = tqdm(total=total_chunks_count, desc="Vector Indexing", position=0)
 
         while has_records:
-            page_chunks = await persistence.list_chunks(project.id, page_no, 50)
+            page_chunks = await persistence.chunks.list(project.id, page_no, 50)
             if len(page_chunks):
                 page_no += 1
 
@@ -84,8 +83,8 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
                 has_records = False
                 break
 
-            # Qdrant accepts integer point IDs for both persistence backends;
-            # backend-native chunk IDs remain private to the persistence layer.
+            # Stable batch IDs work in both vector adapters; backend-native
+            # chunk IDs remain private to the persistence layer.
             chunks_ids = list(range(idx, idx + len(page_chunks)))
             idx += len(page_chunks)
 

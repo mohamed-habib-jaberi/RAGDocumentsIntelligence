@@ -18,6 +18,9 @@ asyncpg==0.30.0
 greenlet==3.1.1
 alembic==1.14.0
 psycopg2-binary==2.9.10
+# LangChain 0.1.x requires packaging<24; pin wheel before it raised that floor.
+packaging==23.2
+wheel==0.42.0
 nltk==3.9.1
 
 # Monitoring and metrics

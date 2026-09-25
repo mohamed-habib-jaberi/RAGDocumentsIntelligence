@@ -1,8 +1,9 @@
-from .BaseController import BaseController
-from persistence.contracts import ChunkRecord, ProjectRecord
-from stores.llm.LLMEnums import DocumentTypeEnum
-from typing import List
 import json
+
+from domain import ChunkRecord, ProjectRecord
+from stores.llm.LLMEnums import DocumentTypeEnum
+
+from .BaseController import BaseController
 
 
 class NLPController(BaseController):
@@ -17,7 +18,10 @@ class NLPController(BaseController):
         self.template_parser = template_parser
 
     def create_collection_name(self, project_id: str):
-        return f"collection_{self.vectordb_client.default_vector_size}_{project_id}".strip()
+        collection = (
+            f"collection_{self.vectordb_client.default_vector_size}_{project_id}"
+        )
+        return collection.strip()
 
     async def reset_vector_db_collection(self, project: ProjectRecord):
         collection_name = self.create_collection_name(project_id=project.project_id)
@@ -31,13 +35,15 @@ class NLPController(BaseController):
             collection_name=collection_name
         )
 
+        if collection_info is None:
+            return None
         return json.loads(json.dumps(collection_info, default=lambda x: x.__dict__))
 
     async def index_into_vector_db(
         self,
         project: ProjectRecord,
-        chunks: List[ChunkRecord],
-        chunks_ids: List[int],
+        chunks: list[ChunkRecord],
+        chunks_ids: list[int],
         do_reset: bool = False,
     ):
 
@@ -76,6 +82,9 @@ class NLPController(BaseController):
         # step1: get collection name
         query_vector = None
         collection_name = self.create_collection_name(project_id=project.project_id)
+
+        if not await self.vectordb_client.is_collection_existed(collection_name):
+            return False
 
         # step2: get text embedding vector
         vectors = self.embedding_client.embed_text(

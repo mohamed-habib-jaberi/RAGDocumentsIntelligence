@@ -2,7 +2,7 @@
   "info": {
     "name": "RAG Document Intelligence — Complete API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Postman collection for the complete main branch."
+    "description": "Postman collection for branch 13c. Select MongoDB or PostgreSQL before starting the API."
   },
   "item": [
     {
@@ -64,6 +64,20 @@
             },
             "description": "Select a local TXT or PDF file before sending the request."
           },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Upload succeeds', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.file_id).to.be.a('string').and.not.empty;",
+                  "pm.collectionVariables.set('file_id', body.file_id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "response": []
         },
         {
@@ -78,7 +92,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"file_id\": \"uploaded-file-id.pdf\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
+              "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -114,7 +128,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"file_id\": \"uploaded-file-id.pdf\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
+              "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -289,6 +303,11 @@
     {
       "key": "project_id",
       "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "file_id",
+      "value": "",
       "type": "string"
     }
   ]

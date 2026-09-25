@@ -2,12 +2,14 @@ import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 
+from application.ports import TaskExecutionRepository
+
 
 class IdempotencyManager:
     """Backend-neutral Celery idempotence service."""
 
-    def __init__(self, persistence):
-        self.persistence = persistence
+    def __init__(self, repository: TaskExecutionRepository):
+        self.repository = repository
 
     @staticmethod
     def create_args_hash(task_name, task_args):
@@ -17,7 +19,7 @@ class IdempotencyManager:
         ).hexdigest()
 
     async def create_task_record(self, task_name, task_args, celery_task_id=None):
-        return await self.persistence.create_task_execution(
+        return await self.repository.create(
             task_name,
             self.create_args_hash(task_name, task_args),
             task_args,
@@ -25,10 +27,10 @@ class IdempotencyManager:
         )
 
     async def update_task_status(self, execution_id, status, result=None):
-        await self.persistence.update_task_execution(execution_id, status, result)
+        await self.repository.update(execution_id, status, result)
 
     async def get_existing_task(self, task_name, task_args, celery_task_id):
-        return await self.persistence.find_task_execution(
+        return await self.repository.find(
             task_name,
             self.create_args_hash(task_name, task_args),
             celery_task_id,
@@ -54,4 +56,4 @@ class IdempotencyManager:
 
     async def cleanup_old_tasks(self, time_retention=86400):
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=time_retention)
-        return await self.persistence.cleanup_task_executions(cutoff)
+        return await self.repository.cleanup(cutoff)

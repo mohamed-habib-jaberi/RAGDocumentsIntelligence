@@ -1,16 +1,19 @@
-from fastapi import APIRouter, Depends, UploadFile, status, Request
-from fastapi.responses import JSONResponse
-import os
-from helpers.config import get_settings, Settings
-from controllers import DataController
-import aiofiles
-from models import ResponseSignal
 import logging
-from .schemes.data import ProcessRequest
-from persistence import AssetRecord
+import os
+
+import aiofiles
+from fastapi import APIRouter, Depends, Request, UploadFile, status
+from fastapi.responses import JSONResponse
+
+from controllers import DataController
+from domain import AssetRecord
+from helpers.config import Settings, get_settings
+from models import ResponseSignal
 from models.enums.AssetTypeEnum import AssetTypeEnum
 from tasks.file_processing import process_project_files
 from tasks.process_workflow import process_and_push_workflow
+
+from .schemes.data import ProcessRequest
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -28,7 +31,7 @@ async def upload_data(
     app_settings: Settings = Depends(get_settings),
 ):
 
-    project = await request.app.persistence.get_or_create_project(project_id)
+    project = await request.app.persistence.projects.get_or_create(project_id)
 
     # validate the file properties
     data_controller = DataController()
@@ -64,12 +67,14 @@ async def upload_data(
         asset_size=os.path.getsize(file_path),
     )
 
-    asset_record = await request.app.persistence.create_asset(asset_resource)
+    asset_record = await request.app.persistence.assets.create(asset_resource)
 
     return JSONResponse(
         content={
             "signal": ResponseSignal.FILE_UPLOAD_SUCCESS.value,
-            "file_id": str(asset_record.id),
+            # The processing endpoint looks up assets by their generated file
+            # name. Keep database-native IDs private to the persistence adapter.
+            "file_id": asset_record.asset_name,
         }
     )
 

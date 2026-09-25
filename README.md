@@ -5,39 +5,87 @@ RAG Document Intelligence is a document-grounded Retrieval-Augmented Generation
 indexes their embeddings, retrieves relevant context, and generates answers
 with either Ollama or a cloud OpenAI-compatible provider.
 
-This `main` branch is the complete, cumulative application. Each numbered
-branch is a tutorial checkpoint that introduces one capability.
+## Branche `13c-mongodb-postgresql-switch`
 
-## Branch `13c-mongodb-postgresql-switch`
-
-This branch supports selecting MongoDB or PostgreSQL at process startup without
-changing the HTTP API, controllers, Celery tasks, or RAG behaviour.
-
-Select the backend in `src/.env` (or `docker/env/.env.app`):
+Cette branche ajoute une persistance interchangeable entre MongoDB et
+PostgreSQL, sans modifier les routes HTTP, les contrôleurs, les tâches Celery
+ou le fonctionnement RAG. Le choix est effectué une seule fois au démarrage du
+processus avec une variable de configuration :
 
 ```env
-PERSISTENCE_BACKEND="mongodb" # or "postgresql"
+PERSISTENCE_BACKEND="mongodb"
+# ou
+PERSISTENCE_BACKEND="postgresql"
 ```
 
-At startup, the persistence factory selects one backend and exposes the same
-repositories for projects, assets, chunks, and task-execution records:
+Après une modification de ce flag, il faut redémarrer **FastAPI, Celery Worker
+et Celery Beat**. Un processus déjà lancé ne change jamais de base de données
+pendant son exécution.
+
+### Ce qui a été implémenté
+
+- conservation du comportement MongoDB provenant du projet Mini-RAG ;
+- ajout d'un adaptateur PostgreSQL asynchrone avec SQLAlchemy et `asyncpg` ;
+- ajout des migrations Alembic pour les tables PostgreSQL ;
+- séparation des contrats applicatifs et des détails techniques des bases ;
+- division de la persistance en quatre petits repositories spécialisés ;
+- normalisation des identifiants en `str` dans le domaine, qu'ils proviennent
+  d'un `ObjectId` MongoDB ou d'un entier PostgreSQL ;
+- persistance de l'idempotence Celery dans la base sélectionnée ;
+- même contrainte d'unicité `(asset_project_id, asset_name)` dans les deux
+  bases ;
+- fermeture des connexions en cas d'arrêt normal ou d'échec d'initialisation ;
+- suppression de l'ancienne couche monolithique `src/persistence/`.
+
+Le stockage vectoriel possède désormais son propre switch indépendant. Qdrant
+ou PGVector peuvent être associés à MongoDB comme à PostgreSQL. Aucun des deux
+switches ne migre automatiquement les données vers le backend cible.
+
+### Vue rapide du mécanisme
+
+Au démarrage, la factory lit `PERSISTENCE_BACKEND`, crée un seul adaptateur et
+expose exactement les mêmes repositories au reste de l'application :
 
 ```text
 FastAPI routes and Celery tasks
              ↓
-    common persistence interface
+       ports applicatifs
         ↙                  ↘
- MongoDB repositories   PostgreSQL repositories
+ repositories Motor     repositories SQLAlchemy
 ```
 
-Routes do not contain backend checks or directly handle MongoDB `ObjectId`
-values and SQLAlchemy sessions. They use `request.app.persistence`, whose
-repository methods return backend-neutral application records. Switching the
-flag changes where new data is stored; it does not copy existing data between
-MongoDB and PostgreSQL.
+Le seul `if` MongoDB/PostgreSQL se trouve dans la composition de
+l'infrastructure. Les routes utilisent par exemple
+`request.app.persistence.projects.get_or_create(...)` et ne connaissent ni
+`ObjectId`, ni `AsyncSession`, ni SQLAlchemy.
 
-Qdrant remains the shared vector store so vector-search behaviour is identical
-in both persistence modes. PostgreSQL schema changes remain managed by Alembic.
+### Où activer le switch
+
+| Exécution | Fichier à modifier | Valeur |
+| --- | --- | --- |
+| Application lancée depuis `src/` | `src/.env` | `PERSISTENCE_BACKEND="mongodb"` ou `"postgresql"` |
+| Stack Docker Compose | `docker/env/.env.app` | `PERSISTENCE_BACKEND="mongodb"` ou `"postgresql"` |
+
+Ne placez pas le flag dans `alembic.ini`. Alembic sert uniquement à versionner
+le schéma PostgreSQL ; le choix du backend appartient à la configuration de
+l'application.
+
+Le vector store est sélectionné séparément dans le même fichier :
+
+```env
+VECTOR_DB_BACKEND="QDRANT"
+# ou
+VECTOR_DB_BACKEND="PGVECTOR"
+```
+
+Les quatre combinaisons prises en charge sont :
+
+| Persistance métier | Stockage vectoriel | Usage |
+| --- | --- | --- |
+| MongoDB | Qdrant | Mode historique Mini-RAG |
+| MongoDB | PGVector | Documents MongoDB, embeddings PostgreSQL |
+| PostgreSQL | Qdrant | Données relationnelles, embeddings Qdrant |
+| PostgreSQL | PGVector | Toutes les données dans PostgreSQL, avec séparation logique |
 
 ## Architecture
 
@@ -51,8 +99,10 @@ flowchart TB
     Routes --> Queue["Celery tasks"]
 
     Controllers --> Files["Uploaded files\nsrc/assets/files"]
-    Controllers --> Persistence["MongoDB or PostgreSQL\nprojects, assets, chunks, task records"]
-    Controllers --> VectorDB["Qdrant\nsemantic retrieval"]
+    Routes --> Ports["Application ports\nrepository contracts"]
+    Queue --> Ports
+    Ports --> Persistence["Infrastructure adapters\nMongoDB or PostgreSQL"]
+    Controllers --> VectorDB["Qdrant ou PGVector\nsemantic retrieval"]
     Controllers --> LLM["Ollama or Cloud\ngeneration + embeddings"]
 
     Queue --> RabbitMQ["RabbitMQ\ntask broker"]
@@ -67,36 +117,106 @@ flowchart TB
     Queue --> Flower["Flower\nCelery monitoring"]
 ```
 
-### Layers and responsibilities
+### Couches et responsabilités
 
 ```text
-routes → controllers / Celery tasks → models / stores → external services
+routes / tasks → ports applicatifs ← adaptateurs d'infrastructure → bases
 ```
 
-| Layer | Responsibility |
+| Couche | Responsabilité |
 | --- | --- |
-| `src/main.py` | Creates FastAPI and initializes the selected persistence backend, LLM clients, vector store, templates, and metrics. |
-| `src/routes/` | Exposes versioned HTTP endpoints under `/api/v1` and returns API responses. |
-| `src/controllers/` | Handles synchronous business rules: file validation, storage, chunking, prompt construction, and RAG orchestration. |
-| `src/tasks/` | Handles long-running Celery work: document processing, indexing, workflows, and maintenance. |
-| `src/persistence/` | Exposes one contract with Motor and SQLAlchemy implementations. |
-| `src/stores/llm/` | Provides one interface for Ollama/OpenAI-compatible APIs and Cohere. |
-| `src/stores/vectordb/` | Provides the Qdrant vector-search interface. |
-| `src/utils/` | Implements application metrics and task idempotency support. |
-| `docker/` | Defines the multi-service deployment, monitoring, and local environment templates. |
+| `src/main.py` | Composition de FastAPI et initialisation des dépendances partagées. |
+| `src/routes/` | Endpoints HTTP versionnés sous `/api/v1`; aucune logique spécifique à une base. |
+| `src/controllers/` | Validation des fichiers, découpage, construction du prompt et orchestration RAG. |
+| `src/tasks/` | Traitements longs Celery : chunks, indexation, workflows et maintenance. |
+| `src/domain/` | Records indépendants de toute base : `ProjectRecord`, `AssetRecord`, `ChunkRecord`, `TaskExecutionRecord`. |
+| `src/application/ports/` | Interfaces minimales attendues par l'application. Cette couche ne dépend d'aucun driver de base. |
+| `src/infrastructure/persistence/` | Adaptateurs Motor/SQLAlchemy et factory de sélection du backend. |
+| `src/models/db_schemes/minirag/` | Modèles SQLAlchemy et historique des migrations Alembic PostgreSQL. |
+| `src/stores/llm/` | Fournisseurs Ollama/OpenAI-compatible et Cohere. |
+| `src/stores/vectordb/` | Contrat vectoriel et adaptateurs Qdrant/PGVector. |
+| `src/utils/` | Métriques et service d'idempotence des tâches. |
+| `docker/` | Services, réseau, volumes, observabilité et exemples de configuration. |
 
-At application startup, these shared dependencies are attached to `app` and
-retrieved by routes through `request.app`:
+Arborescence spécifique au switch :
 
-| Dependency | Role |
+```text
+src/
+├── domain/
+│   └── records.py                    # objets échangés par l'application
+├── application/
+│   └── ports/
+│       └── persistence.py            # contrats des repositories
+├── infrastructure/
+│   └── persistence/
+│       ├── factory.py                # sélection via PERSISTENCE_BACKEND
+│       ├── mongodb.py                # implémentation Motor
+│       └── postgresql.py             # implémentation SQLAlchemy async
+└── models/db_schemes/minirag/
+    ├── schemes/                      # modèles SQLAlchemy
+    └── alembic/versions/             # migrations PostgreSQL
+```
+
+La règle de dépendance est la suivante : le domaine ne dépend d'aucune base,
+les ports dépendent seulement du domaine, et les adaptateurs techniques
+implémentent les ports. Ce découpage applique notamment :
+
+- **SRP** : chaque repository gère une famille de données ;
+- **ISP** : les consommateurs reçoivent une petite interface spécialisée ;
+- **DIP** : l'idempotence, les routes et les tâches dépendent des contrats, pas
+  de Motor ou SQLAlchemy ;
+- **LSP** : les deux implémentations retournent les mêmes records et les mêmes
+  types d'identifiants.
+
+### Contrats de persistance
+
+| Repository | Opérations principales | Données |
+| --- | --- | --- |
+| `projects` | `get_or_create` | Projets |
+| `assets` | `create`, `get`, `list` | Fichiers uploadés et métadonnées |
+| `chunks` | `insert_many`, `list`, `count`, `delete_by_project` | Segments de documents |
+| `task_executions` | `create`, `find`, `update`, `cleanup` | Idempotence et statut Celery |
+
+MongoDB conserve ses relations internes sous forme d'`ObjectId`. PostgreSQL
+conserve ses clés sous forme d'entiers et ses métadonnées en `JSONB`. Ces types
+restent privés aux adaptateurs : les couches supérieures voient toujours des
+records avec des identifiants `str`.
+
+| Caractéristique | MongoDB | PostgreSQL |
+| --- | --- | --- |
+| Driver | Motor asynchrone | SQLAlchemy async + `asyncpg` |
+| Structure | Collections flexibles | Tables et contraintes explicites |
+| Évolution du schéma | Indexes créés au démarrage | Migrations Alembic versionnées |
+| Identifiant natif | `ObjectId` | `Integer` auto-incrémenté |
+| Identifiant exposé au métier | `str` | `str` |
+| Métadonnées | Document BSON | `JSONB` |
+
+### Séquence de démarrage
+
+1. `Settings` valide les variables exigées par le backend choisi.
+2. `create_persistence(settings)` construit `MongoPersistence` ou
+   `PostgresPersistence`.
+3. L'adaptateur vérifie la connexion et crée les indexes MongoDB si nécessaire.
+4. FastAPI expose l'agrégat via `app.persistence`.
+5. Les routes et tâches sélectionnent seulement le repository utile.
+6. À l'arrêt, la connexion Motor ou le moteur SQLAlchemy est fermé.
+
+En Docker/PostgreSQL, l'entrypoint du conteneur FastAPI exécute auparavant
+`alembic upgrade head` lorsque `RUN_DB_MIGRATIONS="true"`. Les workers ne
+lancent pas Alembic, ce qui évite plusieurs migrations concurrentes.
+
+Les dépendances partagées sont attachées à l'application FastAPI au démarrage
+et récupérées dans les routes via `request.app` :
+
+| Dépendance | Rôle |
 | --- | --- |
-| `app.persistence` | Backend-neutral projects, assets, chunks, and task-execution operations. |
-| `app.generation_client` | Generates the final natural-language answer. |
-| `app.embedding_client` | Converts documents and questions into vectors. |
-| `app.vectordb_client` | Creates, fills, and searches Qdrant collections. |
-| `app.template_parser` | Loads RAG prompt templates for the configured language. |
+| `app.persistence` | Opérations neutres pour les projets, assets, chunks et exécutions. |
+| `app.generation_client` | Génération de la réponse en langage naturel. |
+| `app.embedding_client` | Transformation des documents et questions en vecteurs. |
+| `app.vectordb_client` | Création, alimentation et recherche avec Qdrant ou PGVector. |
+| `app.template_parser` | Chargement des templates RAG selon la langue configurée. |
 
-### Communication flow: document to answer
+### Flux complet : du document à la réponse
 
 ```mermaid
 sequenceDiagram
@@ -104,7 +224,7 @@ sequenceDiagram
     participant A as FastAPI
     participant F as Files / selected database
     participant C as Celery
-    participant V as Qdrant
+    participant V as Qdrant / PGVector
     participant L as Ollama or Cloud
 
     U->>A: Upload TXT/PDF for a project
@@ -143,8 +263,9 @@ Flower displays worker and task activity.
 The embedding client creates vectors for chunk batches. A vector record keeps a
 reference to the original chunk so the matching text can be recovered later.
 
-Qdrant stores vectors in a dedicated vector-search database. Collection names include both the
-project identifier and embedding dimension to avoid mixing incompatible vectors.
+Qdrant ou PGVector stocke les vecteurs selon `VECTOR_DB_BACKEND`. Les noms de
+collection contiennent l'identifiant du projet et la dimension des embeddings,
+ce qui évite de mélanger des vecteurs incompatibles.
 
 #### 4. RAG retrieval and answer generation
 
@@ -180,133 +301,386 @@ Celery. Keep `.env`, `docker/env/.env.*`, passwords, cloud keys,
 and ngrok URLs out of Git. Stop a Colab/ngrok tunnel after testing because its
 public URL exposes the Ollama endpoint.
 
-## Capabilities
+## Fonctionnalités
 
-- FastAPI endpoints for uploading, processing, indexing, searching, and
-  answering questions about documents.
-- Switchable MongoDB/PostgreSQL persistence and Qdrant semantic retrieval.
-- Switchable LLM profiles: local Ollama, Ollama served from Google Colab through
-  ngrok, or a cloud OpenAI-compatible service.
-- Celery workers, RabbitMQ, Redis, scheduled maintenance, and Flower task
-  monitoring.
-- Docker deployment with Nginx, Prometheus, and Grafana.
+- endpoints FastAPI pour uploader, traiter, indexer et interroger les documents ;
+- persistance MongoDB/PostgreSQL et vector store Qdrant/PGVector sélectionnables ;
+- profils LLM interchangeables : Ollama local, Ollama Colab/ngrok ou cloud ;
+- Celery, RabbitMQ, Redis, maintenance planifiée et supervision Flower ;
+- déploiement Docker avec Nginx, Prometheus et Grafana.
 
-## Quick Start: Local Development
+## Installation et commandes
 
-### 1. Install dependencies
+Toutes les commandes suivantes partent de la racine du dépôt
+`RAGDocumentsIntelligence`, sauf indication contraire.
 
-Use Python 3.11 or later, then create an isolated environment:
+### Option A — application locale et infrastructure Docker
+
+#### 1. Créer l'environnement Python
+
+Utiliser Python 3.11 ou une version ultérieure :
 
 ```bash
 conda create -n rag python=3.11 -y
 conda activate rag
 cd src
 pip install -r requirements.txt
-```
-
-### 2. Create local configuration
-
-```bash
 cp .env.example .env
+cd ..
 ```
 
-`src/.env` is personal and ignored by Git. Store API keys, passwords, and an
-ngrok URL only there. `src/.env.example` is the safe, versioned template.
+Le paquet `psycopg2-binary` est volontairement utilisé : il évite la
+compilation locale de `psycopg2` et l'erreur `Failed to build psycopg2` en
+l'absence de `pg_config`.
 
-### 3. Choose the LLM profile
+`src/.env` contient les secrets locaux et est ignoré par Git. Ne modifiez pas
+`src/.env.example` avec de vraies clés ou de vrais mots de passe.
 
-For Ollama on the Mac:
-
-```env
-LLM_MODE="OLLAMA"
-OLLAMA_API_URL="http://localhost:11434/v1"
-```
-
-For Colab, keep `LLM_MODE="OLLAMA"` and replace the URL with the HTTPS ngrok
-address followed by `/v1`. For a cloud provider:
-
-```env
-LLM_MODE="CLOUD"
-CLOUD_OPENAI_API_KEY="your-key-kept-only-in-.env"
-```
-
-See [the Ollama local and Colab guide](docs/OLLAMA_LOCAL_AND_COLAB.md) for
-model downloads, notebook usage, and ngrok setup.
-
-### 4. Start infrastructure
-
-For MongoDB, PostgreSQL, RabbitMQ, Redis, and the other services, create the
-Docker environment files from their templates:
+#### 2. Préparer Docker Compose
 
 ```bash
-cd ../docker/env
+cd docker/env
 cp .env.example.app .env.app
 cp .env.example.postgres .env.postgres
 cp .env.example.rabbitmq .env.rabbitmq
 cp .env.example.redis .env.redis
 cp .env.example.grafana .env.grafana
 cp .env.example.postgres-exporter .env.postgres-exporter
+cd ../..
 ```
 
-Edit these local files so the RabbitMQ, Redis, Celery, and LLM values agree,
-then start the stack:
+Les mots de passe PostgreSQL, RabbitMQ et Redis doivent correspondre entre les
+fichiers qui les utilisent.
+
+#### 3. Démarrer les services techniques
 
 ```bash
+cd docker
+docker compose up -d mongodb pgvector qdrant rabbitmq redis
+docker compose ps
 cd ..
-docker compose up --build -d
 ```
 
-The Docker guide contains deployment, monitoring, and troubleshooting details:
-[docker/README.md](docker/README.md).
+Depuis l'application exécutée sur la machine hôte, les adresses sont :
 
-### 5. Apply PostgreSQL migrations
+| Service | Hôte | Port |
+| --- | --- | --- |
+| MongoDB | `localhost` | `27007` |
+| PostgreSQL | `localhost` | `5400` |
+| Qdrant | `localhost` | `6333` |
+| RabbitMQ | `localhost` | `5672` |
+| Redis | `localhost` | `6379` |
 
-Skip this step when `PERSISTENCE_BACKEND="mongodb"`. For local PostgreSQL
-development, apply the versioned schema before starting the API:
+#### 4A. Configurer MongoDB
+
+Dans `src/.env` :
+
+```env
+PERSISTENCE_BACKEND="mongodb"
+MONGODB_URL="mongodb://localhost:27007"
+MONGODB_DATABASE="rag_document_intelligence"
+```
+
+MongoDB ne nécessite pas Alembic. Les collections et indexes nécessaires sont
+créés par l'adaptateur lors du démarrage.
+
+#### 4B. Configurer PostgreSQL
+
+Dans `src/.env` :
+
+```env
+PERSISTENCE_BACKEND="postgresql"
+POSTGRES_USERNAME="postgres"
+POSTGRES_PASSWORD="postgres_password"
+POSTGRES_HOST="localhost"
+POSTGRES_PORT=5400
+POSTGRES_MAIN_DATABASE="minirag"
+```
+
+Le mot de passe et le nom de la base doivent être identiques aux valeurs
+`POSTGRES_PASSWORD` et `POSTGRES_DB` de
+`docker/env/.env.postgres`.
+
+Appliquer ensuite les migrations :
 
 ```bash
 cd src/models/db_schemes/minirag
 alembic -c alembic.ini.example upgrade head
+alembic -c alembic.ini.example current
+cd ../../../..
 ```
 
-Alembic reads the PostgreSQL connection settings from `src/.env`. In Docker,
-the FastAPI container performs this step automatically; Celery workers do not
-run migrations.
+La sortie attendue de `current` est la révision marquée `(head)`. Il ne faut
+pas coder un identifiant de révision précis dans la documentation ou les
+scripts : la tête évolue avec les nouvelles migrations.
 
-### 6. Start the API and workers
+Commandes Alembic utiles :
 
 ```bash
+cd src/models/db_schemes/minirag
+
+# Afficher l'historique
+alembic -c alembic.ini.example history
+
+# Générer une migration après une modification des modèles SQLAlchemy
+alembic -c alembic.ini.example revision --autogenerate -m "describe schema change"
+
+# Relire la migration générée, puis l'appliquer
+alembic -c alembic.ini.example upgrade head
+```
+
+Toujours relire une migration autogénérée avant de l'exécuter. Alembic ne doit
+pas être lancé pour MongoDB seul. Il reste nécessaire avec
+`VECTOR_DB_BACKEND="PGVECTOR"`, même si `PERSISTENCE_BACKEND="mongodb"`, car
+la migration active l'extension PostgreSQL `vector`.
+
+#### 4C. Choisir Qdrant ou PGVector
+
+Qdrant partagé :
+
+```env
+VECTOR_DB_BACKEND="QDRANT"
+VECTOR_DB_URL="http://localhost:6333"
+VECTOR_DB_DISTANCE_METHOD="cosine"
+```
+
+PGVector :
+
+```env
+VECTOR_DB_BACKEND="PGVECTOR"
+VECTOR_DB_DISTANCE_METHOD="cosine"
+VECTOR_DB_PGVECTOR_INDEX_THRESHOLD=100
+```
+
+PGVector réutilise les variables `POSTGRES_*`. Elles sont donc obligatoires
+même lorsque la persistance métier reste MongoDB. `VECTOR_DB_URL` et
+`VECTOR_DB_PATH` ne sont pas utilisés en mode PGVector.
+
+#### 5. Configurer le LLM
+
+Ollama local :
+
+```env
+LLM_MODE="OLLAMA"
+OLLAMA_API_URL="http://localhost:11434/v1"
+OLLAMA_GENERATION_MODEL_ID="llama3.2"
+OLLAMA_EMBEDDING_MODEL_ID="nomic-embed-text"
+OLLAMA_EMBEDDING_MODEL_SIZE=768
+```
+
+Pour Colab, conserver `LLM_MODE="OLLAMA"` et utiliser l'URL HTTPS ngrok suivie
+de `/v1`. Pour OpenAI ou un fournisseur compatible :
+
+```env
+LLM_MODE="CLOUD"
+CLOUD_OPENAI_API_KEY="your-private-key"
+CLOUD_OPENAI_API_URL=""
+```
+
+Voir [le guide Ollama local et Colab](docs/OLLAMA_LOCAL_AND_COLAB.md).
+
+#### 6. Lancer l'application
+
+Terminal FastAPI :
+
+```bash
+conda activate rag
 cd src
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-In separate terminals, start the task worker, scheduler, and Flower dashboard:
+Terminal Celery Worker :
+
+```bash
+conda activate rag
+cd src
+python -m celery -A celery_app worker --queues=default,file_processing,data_indexing --loglevel=info
+```
+
+Terminaux optionnels pour Beat et Flower :
 
 ```bash
 cd src
-python -m celery -A celery_app worker --queues=default,file_processing,data_indexing --loglevel=info
 python -m celery -A celery_app beat --loglevel=info
 python -m celery -A celery_app flower --conf=flowerconfig.py
 ```
 
-Useful local endpoints:
+### Option B — stack Docker complète
 
-- API: `http://localhost:8000`
-- API documentation: `http://localhost:8000/docs`
-- Flower: `http://localhost:5555`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000`
+Dans `docker/env/.env.app`, choisir le backend. Les noms des services Docker
+sont utilisés comme hôtes :
 
-## Configuration Principles
+```env
+# Mode MongoDB
+PERSISTENCE_BACKEND="mongodb"
+MONGODB_URL="mongodb://mongodb:27017"
+MONGODB_DATABASE="rag_document_intelligence"
+```
 
-- Never commit real values in `.env` or `docker/env/.env.*`.
-- Copy each `.env.example` file to its local counterpart before running a
-  service.
-- Change `LLM_MODE` rather than application code when switching Ollama and
-  cloud LLM environments.
-- Change `PERSISTENCE_BACKEND` rather than application code when switching
-  MongoDB and PostgreSQL. Restart API and workers after changing it.
-- Keep `VECTOR_DB_BACKEND="QDRANT"` in both persistence modes.
+ou :
+
+```env
+# Mode PostgreSQL
+PERSISTENCE_BACKEND="postgresql"
+POSTGRES_USERNAME="postgres"
+POSTGRES_PASSWORD="postgres_password"
+POSTGRES_HOST="pgvector"
+POSTGRES_PORT=5432
+POSTGRES_MAIN_DATABASE="minirag"
+```
+
+Puis lancer toute la stack :
+
+```bash
+cd docker
+docker compose up --build -d
+docker compose ps
+docker compose logs --tail=100 fastapi
+```
+
+En mode PostgreSQL, le conteneur FastAPI applique automatiquement
+`alembic upgrade head`. En mode MongoDB, cette étape est ignorée.
+
+`VECTOR_DB_URL="http://qdrant:6333"` est important en Docker : l'API et les
+workers utilisent ainsi le même serveur Qdrant. `VECTOR_DB_PATH` est réservé à
+un lancement local dans un seul processus ; il ne doit pas servir à partager
+une base embarquée entre plusieurs conteneurs.
+
+Pour utiliser PGVector dans Docker :
+
+```env
+VECTOR_DB_BACKEND="PGVECTOR"
+VECTOR_DB_DISTANCE_METHOD="cosine"
+VECTOR_DB_PGVECTOR_INDEX_THRESHOLD=100
+```
+
+Lorsque PGVector est actif, l'entrypoint applique aussi les migrations si
+`RUN_DB_MIGRATIONS="true"`, y compris avec une persistance métier MongoDB.
+
+### Passer d'une base à l'autre
+
+Le switch ne nécessite aucune modification du code :
+
+1. arrêter les requêtes et tâches en cours ;
+2. modifier `PERSISTENCE_BACKEND` dans le fichier `.env` utilisé ;
+3. vérifier les variables de connexion du backend cible ;
+4. appliquer `alembic upgrade head` avant un démarrage PostgreSQL local ;
+5. redémarrer FastAPI et tous les processus Celery.
+
+Pour une stack Docker déjà démarrée :
+
+```bash
+cd docker
+docker compose up -d --build --force-recreate fastapi celery-worker celery-beat flower
+docker compose logs --tail=100 fastapi celery-worker
+```
+
+Les données ne sont pas synchronisées entre MongoDB et PostgreSQL. Après un
+switch, l'application lit uniquement les données déjà présentes dans la base
+cible. Une migration de données est une opération séparée.
+
+Le même principe s'applique aux vecteurs : passer de Qdrant à PGVector, ou
+l'inverse, ne copie pas les embeddings. Après le redémarrage, relancer
+**Index project chunks** avec `do_reset=1` pour construire la collection dans
+le nouveau vector store.
+
+### Vérifications et diagnostic
+
+#### Scénario Postman recommandé
+
+Importer la collection
+`src/assets/rag-document-intelligence.postman_collection.json`. Les variables
+de collection par défaut sont `api=http://127.0.0.1:8000` et `project_id=1`.
+
+Exécuter les requêtes dans cet ordre :
+
+1. **Health / API configuration** : doit répondre `200` avec le nom et la
+   version de l'application.
+2. **Upload document** : sélectionner un fichier TXT ou PDF dans
+   `Body > form-data > file`. La réponse contient un `file_id` tel que
+   `abc123_document.txt`.
+3. **Queue document processing** : recopier exactement ce `file_id` dans le
+   JSON de la requête. Un worker Celery doit être actif.
+4. **Index project chunks** : lancer l'indexation après la fin du traitement.
+5. **Get index information**, puis **Semantic search**.
+6. **RAG answer** : nécessite aussi que le LLM configuré soit accessible.
+
+Exemple pour la requête de traitement :
+
+```json
+{
+  "file_id": "value-returned-by-upload.txt",
+  "chunk_size": 500,
+  "overlap_size": 50,
+  "do_reset": 0
+}
+```
+
+Pour valider réellement le switch, exécuter le scénario une première fois en
+MongoDB, changer le flag, redémarrer API et workers, puis utiliser un autre
+`project_id` pour le scénario PostgreSQL. Le endpoint de santé confirme que
+l'API répond, tandis que les logs de démarrage indiquent immédiatement une
+erreur si la base sélectionnée est indisponible.
+
+```bash
+# Vérifier l'API
+curl http://localhost:8000/api/v1/
+
+# Vérifier les conteneurs et leurs logs
+cd docker
+docker compose ps
+docker compose logs --tail=100 mongodb
+docker compose logs --tail=100 pgvector
+docker compose logs --tail=100 fastapi
+
+# Reconstruire l'image de l'application
+docker build -f minirag/Dockerfile -t ragdocumentsintelligence:local ..
+```
+
+Contrôles de qualité depuis la racine du dépôt :
+
+```bash
+# Vérifier la cohérence des dépendances installées
+pip check
+
+# Compiler tous les modules Python sans démarrer les services
+python -m compileall -q src
+
+# Vérifier que le schéma PostgreSQL est à jour
+cd src/models/db_schemes/minirag
+alembic -c alembic.ini.example current
+```
+
+Endpoints utiles :
+
+- API : `http://localhost:8000`
+- Swagger/OpenAPI : `http://localhost:8000/docs`
+- Flower : `http://localhost:5555`
+- Qdrant : `http://localhost:6333/dashboard`
+- Prometheus : `http://localhost:9090`
+- Grafana : `http://localhost:3000`
+
+Erreurs fréquentes :
+
+- `Failed to build psycopg2` : réinstaller les dépendances actuelles qui
+  utilisent `psycopg2-binary` ;
+- `connection refused` : contrôler l'hôte/port et `docker compose ps` ;
+- erreur Alembic : vérifier les variables PostgreSQL et lancer la commande
+  depuis `src/models/db_schemes/minirag` ;
+- données absentes après un switch : elles sont probablement dans l'autre
+  backend ; le flag ne copie pas les données ;
+- changement de flag sans effet : redémarrer FastAPI et tous les workers.
+
+## Principes de configuration
+
+- ne jamais commiter de vraies valeurs dans `.env` ou `docker/env/.env.*` ;
+- copier les fichiers `.env.example` vers leurs fichiers locaux avant le
+  démarrage ;
+- changer `LLM_MODE`, et non le code, pour passer d'Ollama au cloud ;
+- changer `PERSISTENCE_BACKEND`, et non le code, pour passer de MongoDB à
+  PostgreSQL, puis redémarrer l'API et les workers ;
+- choisir séparément `VECTOR_DB_BACKEND="QDRANT"` ou `"PGVECTOR"` ;
+- relancer l'indexation après un changement de vector store.
 
 ## Tutorial Branch Roadmap
 

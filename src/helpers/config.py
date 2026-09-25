@@ -53,9 +53,13 @@ class Settings(BaseSettings):
     GENERATION_DAFAULT_MAX_TOKENS: int = 200
     GENERATION_DAFAULT_TEMPERATURE: float = 0.1
 
-    VECTOR_DB_BACKEND: str = "QDRANT"
+    VECTOR_DB_BACKEND: Literal["QDRANT", "PGVECTOR"] = "QDRANT"
+    # Set a URL when API and workers must share a Qdrant server. Leave empty
+    # only for a single-process local database stored at VECTOR_DB_PATH.
+    VECTOR_DB_URL: str | None = None
     VECTOR_DB_PATH: str = "qdrant_db"
-    VECTOR_DB_DISTANCE_METHOD: str = "cosine"
+    VECTOR_DB_DISTANCE_METHOD: Literal["cosine", "dot"] = "cosine"
+    VECTOR_DB_PGVECTOR_INDEX_THRESHOLD: int = 100
 
     PRIMARY_LANG: str = "en"
     DEFAULT_LANG: str = "en"
@@ -113,6 +117,14 @@ class Settings(BaseSettings):
             )
         ):
             raise ValueError("PostgreSQL credentials are required for PostgreSQL")
+        if self.VECTOR_DB_BACKEND == "PGVECTOR" and not all(
+            (
+                self.POSTGRES_USERNAME,
+                self.POSTGRES_PASSWORD,
+                self.POSTGRES_MAIN_DATABASE,
+            )
+        ):
+            raise ValueError("PostgreSQL credentials are required for PGVector")
         return self
 
     model_config = SettingsConfigDict(env_file=".env")
