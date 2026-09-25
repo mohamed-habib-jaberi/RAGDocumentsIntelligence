@@ -81,11 +81,11 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
         )
 
         # setup batching
-        total_chunks_count = await chunk_model.get_total_chunks_count(project_id=project.project_id)
+        total_chunks_count = await chunk_model.get_total_chunks_count(project_id=project.id)
         pbar = tqdm(total=total_chunks_count, desc="Vector Indexing", position=0)
 
         while has_records:
-            page_chunks = await chunk_model.get_poject_chunks(project_id=project.project_id, page_no=page_no)
+            page_chunks = await chunk_model.get_poject_chunks(project_id=project.id, page_no=page_no)
             if len(page_chunks):
                 page_no += 1
             
@@ -93,7 +93,7 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
                 has_records = False
                 break
 
-            chunks_ids =  [ c.chunk_id for c in page_chunks ]
+            chunks_ids = [str(c.id) for c in page_chunks]
             idx += len(page_chunks)
             
             is_inserted = await nlp_controller.index_into_vector_db(
@@ -136,7 +136,7 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
     finally:
         try:
             if db_engine:
-                await db_engine.dispose()
+                db_engine.close()
             
             if vectordb_client:
                 await vectordb_client.disconnect()

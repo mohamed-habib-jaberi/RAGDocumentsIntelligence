@@ -116,7 +116,7 @@ async def _process_project_files(task_instance, project_id: int,
         project_files_ids = {}
         if file_id:
             asset_record = await asset_model.get_asset_record(
-                asset_project_id=project.project_id,
+                asset_project_id=project.id,
                 asset_name=file_id
             )
 
@@ -138,19 +138,19 @@ async def _process_project_files(task_instance, project_id: int,
                 raise Exception(f"No assets for file: {file_id}")
 
             project_files_ids = {
-                asset_record.asset_id: asset_record.asset_name
+                asset_record.id: asset_record.asset_name
             }
         
         else:
             
 
             project_files = await asset_model.get_all_project_assets(
-                asset_project_id=project.project_id,
+                asset_project_id=project.id,
                 asset_type=AssetTypeEnum.FILE.value,
             )
 
             project_files_ids = {
-                record.asset_id: record.asset_name
+                record.id: record.asset_name
                 for record in project_files
             }
 
@@ -188,7 +188,7 @@ async def _process_project_files(task_instance, project_id: int,
 
             # delete associated chunks
             _ = await chunk_model.delete_chunks_by_project_id(
-                project_id=project.project_id
+                project_id=project.id
             )
 
         for asset_id, file_id in project_files_ids.items():
@@ -216,7 +216,7 @@ async def _process_project_files(task_instance, project_id: int,
                     chunk_text=chunk.page_content,
                     chunk_metadata=chunk.metadata,
                     chunk_order=i+1,
-                    chunk_project_id=project.project_id,
+                    chunk_project_id=project.id,
                     chunk_asset_id=asset_id
                 )
                 for i, chunk in enumerate(file_chunks)
@@ -254,7 +254,7 @@ async def _process_project_files(task_instance, project_id: int,
     finally:
         try:
             if db_engine:
-                await db_engine.dispose()
+                db_engine.close()
             
             if vectordb_client:
                 await vectordb_client.disconnect()

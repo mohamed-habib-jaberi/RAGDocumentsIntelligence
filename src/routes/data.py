@@ -76,7 +76,7 @@ async def upload_data(request: Request, project_id: int, file: UploadFile,
     )
 
     asset_resource = Asset(
-        asset_project_id=project.project_id,
+        asset_project_id=project.id,
         asset_type=AssetTypeEnum.FILE.value,
         asset_name=file_id,
         asset_size=os.path.getsize(file_path)
@@ -87,7 +87,7 @@ async def upload_data(request: Request, project_id: int, file: UploadFile,
     return JSONResponse(
             content={
                 "signal": ResponseSignal.FILE_UPLOAD_SUCCESS.value,
-                "file_id": str(asset_record.asset_id),
+                "file_id": str(asset_record.id),
             }
         )
 

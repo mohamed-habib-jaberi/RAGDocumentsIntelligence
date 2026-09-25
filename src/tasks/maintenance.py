@@ -42,7 +42,7 @@ async def _clean_celery_executions_table(task_instance):
     finally:
         try:
             if db_engine:
-                await db_engine.dispose()
+                db_engine.close()
             
             if vectordb_client:
                 await vectordb_client.disconnect()

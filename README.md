@@ -147,11 +147,10 @@ provider contract works with local Ollama, an ngrok URL from Colab, or cloud.
 
 `docker/docker-compose.yml` orchestrates FastAPI, Nginx, PostgreSQL/PGVector,
 Qdrant, RabbitMQ, Redis, Celery Worker, Celery Beat, Flower, Prometheus,
-Grafana, and exporters. Alembic versions the PostgreSQL schema, including task
-execution tables.
+Grafana, and exporters.
 
 Prometheus collects HTTP metrics, Grafana visualizes them, and Flower monitors
-Celery. Keep `.env`, `docker/env/.env.*`, `alembic.ini`, passwords, cloud keys,
+Celery. Keep `.env`, `docker/env/.env.*`, passwords, cloud keys,
 and ngrok URLs out of Git. Stop a Colab/ngrok tunnel after testing because its
 public URL exposes the Ollama endpoint.
 
@@ -159,8 +158,7 @@ public URL exposes the Ollama endpoint.
 
 - FastAPI endpoints for uploading, processing, indexing, searching, and
   answering questions about documents.
-- PostgreSQL persistence, Alembic migrations, and PGVector or Qdrant for
-  semantic retrieval.
+- MongoDB persistence and Qdrant for semantic retrieval.
 - Switchable LLM profiles: local Ollama, Ollama served from Google Colab through
   ngrok, or a cloud OpenAI-compatible service.
 - Celery workers, RabbitMQ, Redis, scheduled maintenance, and Flower task
@@ -235,17 +233,6 @@ docker compose up --build -d
 The Docker guide contains deployment, monitoring, and troubleshooting details:
 [docker/README.md](docker/README.md).
 
-### 5. Run database migrations
-
-For a local development run, copy the Alembic template then apply migrations:
-
-```bash
-cd src/models/db_schemes/minirag
-cp alembic.ini.example alembic.ini
-# Set sqlalchemy.url in alembic.ini
-alembic upgrade head
-```
-
 ### 6. Start the API and workers
 
 ```bash
@@ -272,7 +259,7 @@ Useful local endpoints:
 
 ## Configuration Principles
 
-- Never commit real values in `.env`, `docker/env/.env.*`, or `alembic.ini`.
+- Never commit real values in `.env` or `docker/env/.env.*`.
 - Copy each `.env.example` file to its local counterpart before running a
   service.
 - Change `LLM_MODE` rather than application code when switching Ollama and
@@ -296,7 +283,6 @@ Useful local endpoints:
 | `10-llm-answer-generation` | Retrieval and LLM answer generation |
 | `11-rag-answer-generation-checkpoint` | RAG flow review checkpoint |
 | `12-rag-template-and-route-fixes` | RAG prompt and route fixes |
-| `13-postgresql-sqlalchemy-migration` | PostgreSQL, SQLAlchemy, and Alembic |
 | `13b-ollama-local-and-colab` | Ollama local/Colab-ngrok and cloud switching |
 | `14-pgvector-vector-store` | PGVector backend and asynchronous vector operations |
 | `15-containerized-deployment-and-observability` | Docker deployment, Nginx, Prometheus, and Grafana |

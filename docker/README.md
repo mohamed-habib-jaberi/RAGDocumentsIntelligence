@@ -27,10 +27,6 @@ cp .env.example.postgres .env.postgres
 cp .env.example.grafana .env.grafana
 cp .env.example.postgres-exporter .env.postgres-exporter
 
-# Setup the Alembic configuration for the FastAPI application
-cd ..
-cd minirag
-cp alembic.example.ini alembic.ini
 ```
 
 Edit `docker/env/.env.app` after copying it. Select either `LLM_MODE="CLOUD"`
