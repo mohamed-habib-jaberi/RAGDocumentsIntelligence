@@ -8,6 +8,37 @@ with either Ollama or a cloud OpenAI-compatible provider.
 This `main` branch is the complete, cumulative application. Each numbered
 branch is a tutorial checkpoint that introduces one capability.
 
+## Branch `13c-mongodb-postgresql-switch`
+
+This branch supports selecting MongoDB or PostgreSQL at process startup without
+changing the HTTP API, controllers, Celery tasks, or RAG behaviour.
+
+Select the backend in `src/.env` (or `docker/env/.env.app`):
+
+```env
+PERSISTENCE_BACKEND="mongodb" # or "postgresql"
+```
+
+At startup, the persistence factory selects one backend and exposes the same
+repositories for projects, assets, chunks, and task-execution records:
+
+```text
+FastAPI routes and Celery tasks
+             ↓
+    common persistence interface
+        ↙                  ↘
+ MongoDB repositories   PostgreSQL repositories
+```
+
+Routes do not contain backend checks or directly handle MongoDB `ObjectId`
+values and SQLAlchemy sessions. They use `request.app.persistence`, whose
+repository methods return backend-neutral application records. Switching the
+flag changes where new data is stored; it does not copy existing data between
+MongoDB and PostgreSQL.
+
+Qdrant remains the shared vector store so vector-search behaviour is identical
+in both persistence modes. PostgreSQL schema changes remain managed by Alembic.
+
 ## Architecture
 
 ```mermaid
@@ -20,13 +51,13 @@ flowchart TB
     Routes --> Queue["Celery tasks"]
 
     Controllers --> Files["Uploaded files\nsrc/assets/files"]
-    Controllers --> PostgreSQL["PostgreSQL\nprojects, assets, chunks, task records"]
-    Controllers --> VectorDB["PGVector or Qdrant\nsemantic retrieval"]
+    Controllers --> Persistence["MongoDB or PostgreSQL\nprojects, assets, chunks, task records"]
+    Controllers --> VectorDB["Qdrant\nsemantic retrieval"]
     Controllers --> LLM["Ollama or Cloud\ngeneration + embeddings"]
 
     Queue --> RabbitMQ["RabbitMQ\ntask broker"]
     Queue --> Redis["Redis\ntask results"]
-    Queue --> PostgreSQL
+    Queue --> Persistence
     Queue --> VectorDB
     Queue --> LLM
 
@@ -44,13 +75,13 @@ routes → controllers / Celery tasks → models / stores → external services
 
 | Layer | Responsibility |
 | --- | --- |
-| `src/main.py` | Creates FastAPI and initializes PostgreSQL, the LLM clients, vector store, templates, and metrics. |
+| `src/main.py` | Creates FastAPI and initializes the selected persistence backend, LLM clients, vector store, templates, and metrics. |
 | `src/routes/` | Exposes versioned HTTP endpoints under `/api/v1` and returns API responses. |
 | `src/controllers/` | Handles synchronous business rules: file validation, storage, chunking, prompt construction, and RAG orchestration. |
 | `src/tasks/` | Handles long-running Celery work: document processing, indexing, workflows, and maintenance. |
-| `src/models/` | Persists projects, assets, chunks, and task executions through asynchronous SQLAlchemy sessions. |
+| `src/persistence/` | Exposes one contract with Motor and SQLAlchemy implementations. |
 | `src/stores/llm/` | Provides one interface for Ollama/OpenAI-compatible APIs and Cohere. |
-| `src/stores/vectordb/` | Provides one interface for PGVector and Qdrant. |
+| `src/stores/vectordb/` | Provides the Qdrant vector-search interface. |
 | `src/utils/` | Implements application metrics and task idempotency support. |
 | `docker/` | Defines the multi-service deployment, monitoring, and local environment templates. |
 
@@ -59,10 +90,10 @@ retrieved by routes through `request.app`:
 
 | Dependency | Role |
 | --- | --- |
-| `app.db_client` | Creates asynchronous PostgreSQL sessions. |
+| `app.persistence` | Backend-neutral projects, assets, chunks, and task-execution operations. |
 | `app.generation_client` | Generates the final natural-language answer. |
 | `app.embedding_client` | Converts documents and questions into vectors. |
-| `app.vectordb_client` | Creates, fills, and searches PGVector or Qdrant collections. |
+| `app.vectordb_client` | Creates, fills, and searches Qdrant collections. |
 | `app.template_parser` | Loads RAG prompt templates for the configured language. |
 
 ### Communication flow: document to answer
@@ -71,9 +102,9 @@ retrieved by routes through `request.app`:
 sequenceDiagram
     participant U as User
     participant A as FastAPI
-    participant F as Files / PostgreSQL
+    participant F as Files / selected database
     participant C as Celery
-    participant V as PGVector or Qdrant
+    participant V as Qdrant
     participant L as Ollama or Cloud
 
     U->>A: Upload TXT/PDF for a project
@@ -94,7 +125,7 @@ sequenceDiagram
 #### 1. Upload and asset tracking
 
 `DataController` validates the MIME type, size, and filename before writing the
-file to `src/assets/files/<project_id>/`. PostgreSQL stores an asset record that
+file to `src/assets/files/<project_id>/`. The selected database stores an asset record that
 links the generated filename, file type, and file size to its project.
 
 #### 2. Background document processing
@@ -112,12 +143,7 @@ Flower displays worker and task activity.
 The embedding client creates vectors for chunk batches. A vector record keeps a
 reference to the original chunk so the matching text can be recovered later.
 
-| Backend | Role |
-| --- | --- |
-| `PGVECTOR` | Stores vectors in PostgreSQL alongside relational data. |
-| `QDRANT` | Stores vectors in a dedicated vector-search database. |
-
-`VECTOR_DB_BACKEND` selects the backend. Collection names include both the
+Qdrant stores vectors in a dedicated vector-search database. Collection names include both the
 project identifier and embedding dimension to avoid mixing incompatible vectors.
 
 #### 4. RAG retrieval and answer generation
@@ -145,7 +171,7 @@ provider contract works with local Ollama, an ngrok URL from Colab, or cloud.
 
 ### Infrastructure, observability, and safety
 
-`docker/docker-compose.yml` orchestrates FastAPI, Nginx, PostgreSQL/PGVector,
+`docker/docker-compose.yml` orchestrates FastAPI, Nginx, MongoDB, PostgreSQL,
 Qdrant, RabbitMQ, Redis, Celery Worker, Celery Beat, Flower, Prometheus,
 Grafana, and exporters.
 
@@ -158,7 +184,7 @@ public URL exposes the Ollama endpoint.
 
 - FastAPI endpoints for uploading, processing, indexing, searching, and
   answering questions about documents.
-- MongoDB persistence and Qdrant for semantic retrieval.
+- Switchable MongoDB/PostgreSQL persistence and Qdrant semantic retrieval.
 - Switchable LLM profiles: local Ollama, Ollama served from Google Colab through
   ngrok, or a cloud OpenAI-compatible service.
 - Celery workers, RabbitMQ, Redis, scheduled maintenance, and Flower task
@@ -209,7 +235,7 @@ model downloads, notebook usage, and ngrok setup.
 
 ### 4. Start infrastructure
 
-For PostgreSQL/PGVector, RabbitMQ, Redis, and the other services, create the
+For MongoDB, PostgreSQL, RabbitMQ, Redis, and the other services, create the
 Docker environment files from their templates:
 
 ```bash
@@ -232,6 +258,20 @@ docker compose up --build -d
 
 The Docker guide contains deployment, monitoring, and troubleshooting details:
 [docker/README.md](docker/README.md).
+
+### 5. Apply PostgreSQL migrations
+
+Skip this step when `PERSISTENCE_BACKEND="mongodb"`. For local PostgreSQL
+development, apply the versioned schema before starting the API:
+
+```bash
+cd src/models/db_schemes/minirag
+alembic -c alembic.ini.example upgrade head
+```
+
+Alembic reads the PostgreSQL connection settings from `src/.env`. In Docker,
+the FastAPI container performs this step automatically; Celery workers do not
+run migrations.
 
 ### 6. Start the API and workers
 
@@ -264,8 +304,9 @@ Useful local endpoints:
   service.
 - Change `LLM_MODE` rather than application code when switching Ollama and
   cloud LLM environments.
-- Select `VECTOR_DB_BACKEND="PGVECTOR"` or `"QDRANT"` according to the desired
-  vector backend.
+- Change `PERSISTENCE_BACKEND` rather than application code when switching
+  MongoDB and PostgreSQL. Restart API and workers after changing it.
+- Keep `VECTOR_DB_BACKEND="QDRANT"` in both persistence modes.
 
 ## Tutorial Branch Roadmap
 

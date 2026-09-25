@@ -7,6 +7,7 @@ This directory contains the Docker setup for RAG Document Intelligence, includin
 - **FastAPI Application**: Main application running on Uvicorn
 - **Nginx**: Web server for serving the FastAPI application
 - **PostgreSQL (pgvector)**: Vector-enabled database for storing embeddings
+- **MongoDB**: Alternative document persistence backend selected by flag
 - **Postgres-Exporter**: Exports PostgreSQL metrics for Prometheus
 - **Qdrant**: Vector database for similarity search
 - **Prometheus**: Metrics collection
@@ -34,6 +35,18 @@ with a local cloud API key, or `LLM_MODE="OLLAMA"` with an Ollama endpoint. For
 Ollama on macOS, use `http://host.docker.internal:11434/v1`; for Colab, use the
 ngrok HTTPS URL followed by `/v1`.
 
+Choose exactly one application persistence backend:
+
+```env
+PERSISTENCE_BACKEND="mongodb"
+# or
+PERSISTENCE_BACKEND="postgresql"
+```
+
+The FastAPI container runs `alembic upgrade head` automatically only in
+PostgreSQL mode. Workers do not run migrations concurrently. MongoDB creates
+its required collection indexes during application startup.
+
 ### 2. Start the services
 
 ```bash
@@ -44,14 +57,14 @@ docker compose up --build -d
 To start only specific services:
 
 ```bash
-docker compose up -d fastapi nginx pgvector qdrant
+docker compose up -d fastapi nginx mongodb pgvector qdrant
 ```
 
 If you encounter connection issues, you may want to start the database services first and let them initialize before starting the application:
 
 ```bash
 # Start databases first
-docker compose up -d pgvector qdrant postgres-exporter
+docker compose up -d mongodb pgvector qdrant postgres-exporter
 # Wait for databases to be healthy
 sleep 30
 # Start the application services

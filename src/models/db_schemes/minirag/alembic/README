@@ -1,0 +1,4 @@
+Alembic migration scripts for the PostgreSQL persistence adapter.
+
+MongoDB collection indexes are managed by persistence/mongodb.py and do not
+use this directory.

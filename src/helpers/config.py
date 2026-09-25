@@ -19,8 +19,19 @@ class Settings(BaseSettings):
     FILE_MAX_SIZE: int
     FILE_DEFAULT_CHUNK_SIZE: int
 
-    MONGODB_URL: str
-    MONGODB_DATABASE: str
+    MONGODB_URL: str | None = None
+    MONGODB_DATABASE: str | None = None
+
+    # Select once at process startup. Requests must never switch databases.
+    PERSISTENCE_BACKEND: Literal["mongodb", "postgresql"] = "mongodb"
+
+    # PostgreSQL is optional and is only required when PERSISTENCE_BACKEND is
+    # set to "postgresql".
+    POSTGRES_USERNAME: str | None = None
+    POSTGRES_PASSWORD: str | None = None
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_MAIN_DATABASE: str | None = None
 
     # Change only this value to switch between local/Colab Ollama and cloud.
     LLM_MODE: Literal["OLLAMA", "CLOUD"] = "OLLAMA"
@@ -83,14 +94,25 @@ class Settings(BaseSettings):
             self.EMBEDDING_MODEL_SIZE = self.OLLAMA_EMBEDDING_MODEL_SIZE
         else:
             if not self.CLOUD_OPENAI_API_KEY:
-                raise ValueError(
-                    "CLOUD_OPENAI_API_KEY must be set when LLM_MODE=CLOUD"
-                )
+                raise ValueError("CLOUD_OPENAI_API_KEY must be set when LLM_MODE=CLOUD")
             self.OPENAI_API_KEY = self.CLOUD_OPENAI_API_KEY
             self.OPENAI_API_URL = self.CLOUD_OPENAI_API_URL or None
             self.GENERATION_MODEL_ID = self.CLOUD_GENERATION_MODEL_ID
             self.EMBEDDING_MODEL_ID = self.CLOUD_EMBEDDING_MODEL_ID
             self.EMBEDDING_MODEL_SIZE = self.CLOUD_EMBEDDING_MODEL_SIZE
+        if self.PERSISTENCE_BACKEND == "mongodb":
+            if not self.MONGODB_URL or not self.MONGODB_DATABASE:
+                raise ValueError(
+                    "MONGODB_URL and MONGODB_DATABASE are required for MongoDB"
+                )
+        elif not all(
+            (
+                self.POSTGRES_USERNAME,
+                self.POSTGRES_PASSWORD,
+                self.POSTGRES_MAIN_DATABASE,
+            )
+        ):
+            raise ValueError("PostgreSQL credentials are required for PostgreSQL")
         return self
 
     model_config = SettingsConfigDict(env_file=".env")

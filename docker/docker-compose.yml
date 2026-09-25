@@ -13,10 +13,14 @@ services:
       - backend
     restart: always
     depends_on:
+      mongodb:
+        condition: service_healthy
       pgvector:
         condition: service_healthy
     env_file:
       - ./env/.env.app
+    environment:
+      RUN_DB_MIGRATIONS: "true"
 
   # Celery Worker
   celery-worker:
@@ -33,6 +37,8 @@ services:
       rabbitmq:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       pgvector:
         condition: service_healthy
@@ -113,6 +119,23 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # MongoDB persistence backend
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mongodb
+    ports:
+      - "27007:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # Qdrant (VectorDB)
   qdrant:
@@ -242,6 +265,7 @@ networks:
 volumes:
   fastapi_data:
   pgvector:
+  mongodb_data:
   qdrant_data:
   prometheus_data:
   grafana_data:

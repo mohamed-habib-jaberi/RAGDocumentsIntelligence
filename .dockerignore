@@ -1,0 +1,10 @@
+.git
+.venv
+.venv-system
+**/__pycache__
+**/*.pyc
+src/.env
+docker/.env
+docker/env/.env.*
+src/assets/files
+src/assets/database
