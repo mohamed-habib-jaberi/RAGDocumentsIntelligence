@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the nlp router."""
+
 from fastapi import FastAPI, APIRouter, status, Request
 from fastapi.responses import JSONResponse
 from routes.schemes.nlp import PushRequest, SearchRequest
@@ -19,6 +21,7 @@ nlp_router = APIRouter(
 @nlp_router.post("/index/push/{project_id}")
 async def index_project(request: Request, project_id: int, push_request: PushRequest):
 
+    """Index the persisted chunks of a project in the active vector database."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -38,7 +41,7 @@ async def index_project(request: Request, project_id: int, push_request: PushReq
                 "signal": ResponseSignal.PROJECT_NOT_FOUND_ERROR.value
             }
         )
-    
+
     nlp_controller = NLPController(
         vectordb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
@@ -68,14 +71,14 @@ async def index_project(request: Request, project_id: int, push_request: PushReq
         page_chunks = await chunk_model.get_poject_chunks(project_id=project.project_id, page_no=page_no)
         if len(page_chunks):
             page_no += 1
-        
+
         if not page_chunks or len(page_chunks) == 0:
             has_records = False
             break
 
         chunks_ids =  [ c.chunk_id for c in page_chunks ]
         idx += len(page_chunks)
-        
+
         is_inserted = await nlp_controller.index_into_vector_db(
             project=project,
             chunks=page_chunks,
@@ -92,7 +95,7 @@ async def index_project(request: Request, project_id: int, push_request: PushReq
 
         pbar.update(len(page_chunks))
         inserted_items_count += len(page_chunks)
-        
+
     return JSONResponse(
         content={
             "signal": ResponseSignal.INSERT_INTO_VECTORDB_SUCCESS.value,
@@ -102,7 +105,8 @@ async def index_project(request: Request, project_id: int, push_request: PushReq
 
 @nlp_router.get("/index/info/{project_id}")
 async def get_project_index_info(request: Request, project_id: int):
-    
+
+    """Return vector-index metadata for the requested project."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -129,7 +133,8 @@ async def get_project_index_info(request: Request, project_id: int):
 
 @nlp_router.post("/index/search/{project_id}")
 async def search_index(request: Request, project_id: int, search_request: SearchRequest):
-    
+
+    """Embed a query and return the most similar project documents."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -156,7 +161,7 @@ async def search_index(request: Request, project_id: int, search_request: Search
                     "signal": ResponseSignal.VECTORDB_SEARCH_ERROR.value
                 }
             )
-    
+
     return JSONResponse(
         content={
             "signal": ResponseSignal.VECTORDB_SEARCH_SUCCESS.value,
@@ -166,7 +171,8 @@ async def search_index(request: Request, project_id: int, search_request: Search
 
 @nlp_router.post("/index/answer/{project_id}")
 async def answer_rag(request: Request, project_id: int, search_request: SearchRequest):
-    
+
+    """Retrieve project context and return a generated answer for the submitted question."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -195,7 +201,7 @@ async def answer_rag(request: Request, project_id: int, search_request: SearchRe
                     "signal": ResponseSignal.RAG_ANSWER_ERROR.value
                 }
         )
-    
+
     return JSONResponse(
         content={
             "signal": ResponseSignal.RAG_ANSWER_SUCCESS.value,
