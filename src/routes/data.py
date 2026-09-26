@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the data router."""
+
 from fastapi import FastAPI, APIRouter, Depends, UploadFile, status
 from fastapi.responses import JSONResponse
 import os
@@ -20,6 +22,7 @@ async def upload_data(project_id: str, file: UploadFile,
         
     
     # validate the file properties
+    """Validate and store an uploaded document for the requested project."""
     data_controller = DataController()
 
     is_valid, result_signal = data_controller.validate_uploaded_file(file=file)
