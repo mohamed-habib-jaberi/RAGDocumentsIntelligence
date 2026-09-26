@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the data router."""
+
 from fastapi import FastAPI, APIRouter, Depends, UploadFile, status, Request
 from fastapi.responses import JSONResponse
 import os
@@ -26,8 +28,9 @@ data_router = APIRouter(
 @data_router.post("/upload/{project_id}")
 async def upload_data(request: Request, project_id: int, file: UploadFile,
                       app_settings: Settings = Depends(get_settings)):
-        
-    
+
+
+    """Validate and store an uploaded document for the requested project."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -94,6 +97,7 @@ async def upload_data(request: Request, project_id: int, file: UploadFile,
 @data_router.post("/process/{project_id}")
 async def process_endpoint(request: Request, project_id: int, process_request: ProcessRequest):
 
+    """Queue document extraction and chunk persistence for a project."""
     chunk_size = process_request.chunk_size
     overlap_size = process_request.overlap_size
     do_reset = process_request.do_reset
@@ -116,6 +120,7 @@ async def process_endpoint(request: Request, project_id: int, process_request: P
 @data_router.post("/process-and-push/{project_id}")
 async def process_and_push_endpoint(request: Request, project_id: int, process_request: ProcessRequest):
 
+    """Queue the complete document-processing and vector-indexing workflow."""
     chunk_size = process_request.chunk_size
     overlap_size = process_request.overlap_size
     do_reset = process_request.do_reset

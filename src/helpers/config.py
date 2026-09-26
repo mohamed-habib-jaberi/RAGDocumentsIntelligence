@@ -12,6 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Validate environment configuration and expose typed application settings."""
     APP_NAME: str
     APP_VERSION: str
 
@@ -97,4 +98,5 @@ class Settings(BaseSettings):
 
 
 def get_settings():
+    """Load and cache validated application settings from the environment."""
     return Settings()

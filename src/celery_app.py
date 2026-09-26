@@ -1,3 +1,5 @@
+"""Configure Celery and construct dependencies used by background workers."""
+
 from celery import Celery
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -11,6 +13,7 @@ settings = get_settings()
 
 
 async def get_setup_utils():
+    """Build the controller and parser dependencies used by background tasks."""
     settings = get_settings()
     mongo_conn = AsyncIOMotorClient(settings.MONGODB_URL)
     db_client = mongo_conn[settings.MONGODB_DATABASE]

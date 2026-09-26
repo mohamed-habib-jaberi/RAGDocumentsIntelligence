@@ -1,3 +1,5 @@
+"""Coordinate the ProcessController application workflow."""
+
 from .BaseController import BaseController
 from .ProjectController import ProjectController
 import os
@@ -9,22 +11,27 @@ from dataclasses import dataclass
 
 @dataclass
 class Document:
+    """Encapsulate the responsibilities and state of the Document component."""
     page_content: str
     metadata: dict
 
 class ProcessController(BaseController):
 
+    """Coordinate the Process application workflow."""
     def __init__(self, project_id: str):
+        """Configure document loaders and text-splitting behavior."""
         super().__init__()
 
         self.project_id = project_id
         self.project_path = ProjectController().get_project_path(project_id=project_id)
 
     def get_file_extension(self, file_id: str):
+        """Return the normalized extension of a stored document."""
         return os.path.splitext(file_id)[-1]
 
     def get_file_loader(self, file_id: str):
 
+        """Select the document loader registered for a file extension."""
         file_ext = self.get_file_extension(file_id=file_id)
         file_path = os.path.join(
             self.project_path,
@@ -39,11 +46,12 @@ class ProcessController(BaseController):
 
         if file_ext == ProcessingEnum.PDF.value:
             return PyMuPDFLoader(file_path)
-        
+
         return None
 
     def get_file_content(self, file_id: str):
 
+        """Load textual content from a supported uploaded document."""
         loader = self.get_file_loader(file_id=file_id)
         if loader:
             return loader.load()
@@ -53,6 +61,7 @@ class ProcessController(BaseController):
     def process_file_content(self, file_content: list, file_id: str,
                             chunk_size: int=100, overlap_size: int=20):
 
+        """Split loaded document content into chunks ready for persistence."""
         file_content_texts = [
             rec.page_content
             for rec in file_content
@@ -77,7 +86,8 @@ class ProcessController(BaseController):
         return chunks
 
     def process_simpler_splitter(self, texts: List[str], metadatas: List[dict], chunk_size: int, splitter_tag: str="\n"):
-        
+
+        """Split text on delimiters while respecting the configured chunk size."""
         full_text = " ".join(texts)
 
         # split by splitter_tag
@@ -105,5 +115,4 @@ class ProcessController(BaseController):
         return chunks
 
 
-    
 

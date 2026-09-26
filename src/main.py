@@ -1,3 +1,5 @@
+"""Create the FastAPI application and coordinate its service lifecycle."""
+
 from fastapi import FastAPI
 from routes import base, data, nlp
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -15,6 +17,7 @@ app = FastAPI()
 setup_metrics(app)
 
 async def startup_span():
+    """Initialize persistence, LLM, vector, and template services at application startup."""
     settings = get_settings()
 
     app.mongo_conn = AsyncIOMotorClient(settings.MONGODB_URL)
@@ -31,7 +34,7 @@ async def startup_span():
     app.embedding_client = llm_provider_factory.create(provider=settings.EMBEDDING_BACKEND)
     app.embedding_client.set_embedding_model(model_id=settings.EMBEDDING_MODEL_ID,
                                              embedding_size=settings.EMBEDDING_MODEL_SIZE)
-    
+
     # vector db client
     app.vectordb_client = vectordb_provider_factory.create(
         provider=settings.VECTOR_DB_BACKEND
@@ -45,6 +48,7 @@ async def startup_span():
 
 
 async def shutdown_span():
+    """Release application services and database clients during shutdown."""
     app.mongo_conn.close()
     await app.vectordb_client.disconnect()
 
