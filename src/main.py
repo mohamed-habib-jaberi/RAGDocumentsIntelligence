@@ -1,3 +1,5 @@
+"""Create the FastAPI application and coordinate its service lifecycle."""
+
 from fastapi import FastAPI
 from routes import base, data
 
