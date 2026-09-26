@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the base router."""
+
 from fastapi import FastAPI, APIRouter
 import os
 
@@ -8,6 +10,7 @@ base_router = APIRouter(
 
 @base_router.get("/")
 async def welcome():
+    """Return API metadata and the currently active backend configuration."""
     app_name = os.getenv('APP_NAME')
     app_version = os.getenv('APP_VERSION')
 

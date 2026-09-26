@@ -1,3 +1,5 @@
+"""Create the FastAPI application and coordinate its service lifecycle."""
+
 from fastapi import FastAPI
 from dotenv import load_dotenv
 load_dotenv(".env")
