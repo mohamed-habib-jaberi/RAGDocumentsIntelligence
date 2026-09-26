@@ -1,7 +1,10 @@
+"""Provide shared config configuration and helper behavior."""
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
 
+    """Validate environment configuration and expose typed application settings."""
     APP_NAME: str
     APP_VERSION: str
     OPENAI_API_KEY: str
@@ -14,7 +17,9 @@ class Settings(BaseSettings):
     MONGODB_DATABASE: str
 
     class Config:
+        """Encapsulate the responsibilities and state of the Config component."""
         env_file = ".env"
 
 def get_settings():
+    """Load and cache validated application settings from the environment."""
     return Settings()
