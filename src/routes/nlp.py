@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the nlp router."""
+
 from fastapi import FastAPI, APIRouter, status, Request
 from fastapi.responses import JSONResponse
 from routes.schemes.nlp import PushRequest, SearchRequest
@@ -18,6 +20,7 @@ nlp_router = APIRouter(
 @nlp_router.post("/index/push/{project_id}")
 async def index_project(request: Request, project_id: str, push_request: PushRequest):
 
+    """Index the persisted chunks of a project in the active vector database."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -88,6 +91,7 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
 @nlp_router.get("/index/info/{project_id}")
 async def get_project_index_info(request: Request, project_id: str):
     
+    """Return vector-index metadata for the requested project."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -114,6 +118,7 @@ async def get_project_index_info(request: Request, project_id: str):
 @nlp_router.post("/index/search/{project_id}")
 async def search_index(request: Request, project_id: str, search_request: SearchRequest):
     
+    """Embed a query and return the most similar project documents."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -151,6 +156,7 @@ async def search_index(request: Request, project_id: str, search_request: Search
 @nlp_router.post("/index/answer/{project_id}")
 async def answer_rag(request: Request, project_id: str, search_request: SearchRequest):
     
+    """Retrieve project context and return a generated answer for the submitted question."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )

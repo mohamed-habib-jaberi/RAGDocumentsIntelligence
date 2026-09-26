@@ -1,3 +1,5 @@
+"""Coordinate the ProcessController application workflow."""
+
 from .BaseController import BaseController
 from .ProjectController import ProjectController
 import os
@@ -8,17 +10,21 @@ from models import ProcessingEnum
 
 class ProcessController(BaseController):
 
+    """Coordinate the Process application workflow."""
     def __init__(self, project_id: str):
+        """Configure document loaders and text-splitting behavior."""
         super().__init__()
 
         self.project_id = project_id
         self.project_path = ProjectController().get_project_path(project_id=project_id)
 
     def get_file_extension(self, file_id: str):
+        """Return the normalized extension of a stored document."""
         return os.path.splitext(file_id)[-1]
 
     def get_file_loader(self, file_id: str):
 
+        """Select the document loader registered for a file extension."""
         file_ext = self.get_file_extension(file_id=file_id)
         file_path = os.path.join(
             self.project_path,
@@ -38,6 +44,7 @@ class ProcessController(BaseController):
 
     def get_file_content(self, file_id: str):
 
+        """Load textual content from a supported uploaded document."""
         loader = self.get_file_loader(file_id=file_id)
         if loader:
             return loader.load()
@@ -47,6 +54,7 @@ class ProcessController(BaseController):
     def process_file_content(self, file_content: list, file_id: str,
                             chunk_size: int=100, overlap_size: int=20):
 
+        """Split loaded document content into chunks ready for persistence."""
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=overlap_size,
@@ -72,4 +80,3 @@ class ProcessController(BaseController):
 
 
     
-
