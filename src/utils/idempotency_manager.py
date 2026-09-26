@@ -1,3 +1,5 @@
+"""Provide reusable idempotency manager utilities for the application."""
+
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone
@@ -6,22 +8,25 @@ from models.db_schemes.minirag.schemes.celery_task_execution import CeleryTaskEx
 
 class IdempotencyManager:
 
+    """Prevent duplicate Celery work by tracking persistent task executions."""
     def __init__(self, db_client, db_engine):
+        """Configure task-execution persistence and stale-task handling."""
         self.db_client = db_client
         self.db_engine = db_engine
 
     def create_args_hash(self, task_name: str, task_args: dict):
+        """Build a stable hash from a task name and its arguments for idempotence checks."""
         combined_data = {
             **task_args,
             "task_name": task_name
         }
         json_string = json.dumps(combined_data, sort_keys=True, default=str)
         return hashlib.sha256(json_string.encode()).hexdigest()
-    
+
     async def create_task_record(self, task_name: str, task_args: dict, celery_task_id: str = None) -> CeleryTaskExecution:
         """Create new task execution record."""
         args_hash = self.create_args_hash(task_name, task_args)
-        
+
         task_record = CeleryTaskExecution(
             task_name=task_name,
             task_args_hash=args_hash,
@@ -30,7 +35,7 @@ class IdempotencyManager:
             status='PENDING',
             started_at=datetime.utcnow()
         )
-        
+
         session = self.db_client()
         try:
             session.add(task_record)
@@ -59,7 +64,7 @@ class IdempotencyManager:
                                 task_args: dict, celery_task_id: str) -> CeleryTaskExecution:
         """Check if task with same name and args already exists."""
         args_hash = self.create_args_hash(task_name, task_args)
-        
+
         session = self.db_client()
         try:
             stmt = select(CeleryTaskExecution).where(
@@ -82,14 +87,14 @@ class IdempotencyManager:
         Returns (should_execute, existing_task_or_none)
         """
         existing_task = await self.get_existing_task(task_name, task_args, celery_task_id)
-        
+
         if not existing_task:
             return True, None
-            
+
         # Don't execute if task is already completed successfully
         if existing_task.status == 'SUCCESS':
             return False, existing_task
-            
+
         # Check if task is stuck (running longer than time limit + 60 seconds)
         if existing_task.status in ['PENDING', 'STARTED', 'RETRY']:
             if existing_task.started_at:
@@ -98,10 +103,10 @@ class IdempotencyManager:
                 if time_elapsed > (task_time_limit + time_gap):
                     return True, existing_task  # Task is stuck, allow re-execution
             return False, existing_task  # Task is still running within time limit
-            
+
         # Re-execute if previous task failed
         return True, existing_task
-    
+
     async def cleanup_old_tasks(self, time_retention: int = 86400) -> int:
         """
         Delete old task records older than time_retention seconds.
@@ -111,7 +116,7 @@ class IdempotencyManager:
             Number of deleted records
         """
         cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=time_retention)
-        
+
         session = self.db_client()
         try:
             stmt = delete(CeleryTaskExecution).where(

@@ -1,3 +1,5 @@
+"""Define Celery tasks for the process workflow workflow."""
+
 from celery import chain
 from celery_app import celery_app, get_setup_utils
 from helpers.config import get_settings
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
                 )
 def push_after_process_task(self, prev_task_result):
 
+    """Start vector indexing after document processing completes successfully."""
     project_id = prev_task_result.get("project_id")
     do_reset = prev_task_result.get("do_reset")
 
@@ -38,6 +41,7 @@ def process_and_push_workflow(  self, project_id: int,
                                 file_id: int, chunk_size: int,
                                 overlap_size: int, do_reset: int):
 
+    """Compose processing and indexing tasks into one Celery workflow."""
     workflow = chain(
         process_project_files.s(project_id, file_id, chunk_size, overlap_size, do_reset),
         push_after_process_task.s()
@@ -51,4 +55,3 @@ def process_and_push_workflow(  self, project_id: int,
         "tasks": ["tasks.file_processing.process_project_files", 
                   "tasks.data_indexing.index_data_content"]
     }
-
