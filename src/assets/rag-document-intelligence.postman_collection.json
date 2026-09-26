@@ -2,7 +2,7 @@
   "info": {
     "name": "RAG Document Intelligence — Complete API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Postman collection for branch 13c. Select MongoDB or PostgreSQL before starting the API."
+    "description": "Postman collection for branch 13c. Select MongoDB/PostgreSQL and Qdrant/PGVector before startup. For a normal end-to-end test, upload a file and run only the recommended process-and-index workflow."
   },
   "item": [
     {
@@ -81,7 +81,7 @@
           "response": []
         },
         {
-          "name": "Queue document processing",
+          "name": "Alternative — Process document only",
           "request": {
             "method": "POST",
             "header": [
@@ -112,12 +112,12 @@
                 "{{project_id}}"
               ]
             },
-            "description": "Queues background processing and returns a Celery task_id."
+            "description": "Alternative workflow: persists chunks without indexing them. Do not call this before the recommended process-and-index request, otherwise the same file is processed twice. do_reset=1 removes existing chunks and the vector collection, but keeps the project and uploaded assets."
           },
           "response": []
         },
         {
-          "name": "Process and index workflow",
+          "name": "Recommended — Process and index workflow",
           "request": {
             "method": "POST",
             "header": [
@@ -128,7 +128,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
+              "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -148,7 +148,7 @@
                 "{{project_id}}"
               ]
             },
-            "description": "Queues the document-processing and vector-indexing workflow."
+            "description": "Recommended end-to-end workflow. With do_reset=1 it removes existing chunks and the vector collection, then processes the selected file and rebuilds its vectors. The project row and uploaded asset remain. Do not also call the process-only or index-only requests for the same test."
           },
           "response": []
         }
@@ -158,7 +158,7 @@
       "name": "RAG and semantic search",
       "item": [
         {
-          "name": "Index project chunks",
+          "name": "Alternative — Rebuild vector index from stored chunks",
           "request": {
             "method": "POST",
             "header": [
@@ -169,7 +169,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"do_reset\": 0\n}",
+              "raw": "{\n  \"do_reset\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -190,7 +190,7 @@
                 "{{project_id}}"
               ]
             },
-            "description": ""
+            "description": "Drops and recreates only the Qdrant/PGVector collection, then immediately reindexes every chunk already stored for the project. It does not delete projects, assets, or persisted chunks. Use this request only when chunks have already been processed."
           },
           "response": []
         },
@@ -213,7 +213,7 @@
                 "{{project_id}}"
               ]
             },
-            "description": ""
+            "description": "Returns normalized information about the active vector collection. A missing collection returns 404."
           },
           "response": []
         },
@@ -229,7 +229,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"text\": \"What information is available in this project?\",\n  \"limit\": 5\n}",
+              "raw": "{\n  \"text\": \"Quels sont les principaux éléments décrits dans le document ?\",\n  \"limit\": 5\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -250,7 +250,7 @@
                 "{{project_id}}"
               ]
             },
-            "description": ""
+            "description": "Returns the chunks nearest to a precise question. Verify this response before calling RAG answer: empty or irrelevant results will produce an unreliable answer."
           },
           "response": []
         },
@@ -266,7 +266,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"text\": \"Summarize the most relevant information.\",\n  \"limit\": 5\n}",
+              "raw": "{\n  \"text\": \"Quels sont les principaux engagements mentionnés dans ce document ?\",\n  \"limit\": 5\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -287,11 +287,26 @@
                 "{{project_id}}"
               ]
             },
-            "description": ""
+            "description": "Generates an answer grounded only in the retrieved chunks. Scanned PDFs require OCR before processing; otherwise the retrieved content can be empty."
           },
           "response": []
         }
       ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "const projectId = String(pm.collectionVariables.get('project_id') || '').trim();",
+          "if (!/^\\d+$/.test(projectId)) { throw new Error('project_id must contain digits only'); }",
+          "pm.collectionVariables.set('project_id', projectId);",
+          "const api = String(pm.collectionVariables.get('api') || '').trim().replace(/\\/$/, '');",
+          "pm.collectionVariables.set('api', api);"
+        ],
+        "type": "text/javascript"
+      }
     }
   ],
   "variable": [

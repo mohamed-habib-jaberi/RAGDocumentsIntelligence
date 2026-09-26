@@ -38,6 +38,7 @@ class PGVectorProvider(VectorDBInterface):
         self.default_vector_size = default_vector_size
         self.index_threshold = index_threshold
         self.logger = logging.getLogger("uvicorn")
+        self.distance_method = distance_method
 
         if distance_method == DistanceMethodEnums.COSINE.value:
             self.distance_operator = "<=>"
@@ -104,21 +105,41 @@ class PGVectorProvider(VectorDBInterface):
             return list(result.scalars().all())
 
     async def get_collection_info(self, collection_name: str) -> dict | None:
-        """Return normalized metadata for a vector collection."""
+        """Return normalized vector metadata and PostgreSQL table details."""
         collection_name = self._validate_collection_name(collection_name)
-        if not await self.is_collection_existed(collection_name):
-            return None
 
         async with self.sessions() as session:
-            result = await session.execute(
+            table_result = await session.execute(
+                sql_text(
+                    "SELECT schemaname, tablename, tableowner, "
+                    "tablespace, hasindexes "
+                    "FROM pg_tables "
+                    "WHERE schemaname = 'public' "
+                    "AND tablename = :collection_name"
+                ),
+                {"collection_name": collection_name},
+            )
+            table_data = table_result.mappings().one_or_none()
+            if table_data is None:
+                return None
+
+            count_result = await session.execute(
                 sql_text(f'SELECT COUNT(*) FROM "{collection_name}"')
             )
             return {
                 "backend": "PGVECTOR",
                 "collection_name": collection_name,
-                "points_count": result.scalar_one(),
+                "points_count": count_result.scalar_one(),
                 "vector_size": self.default_vector_size,
-                "distance": self.distance_operator,
+                "distance": self.distance_method,
+                "details": {
+                    "schema_name": table_data["schemaname"],
+                    "table_name": table_data["tablename"],
+                    "table_owner": table_data["tableowner"],
+                    "tablespace": table_data["tablespace"],
+                    "has_indexes": table_data["hasindexes"],
+                    "distance_operator": self.distance_operator,
+                },
             }
 
     async def delete_collection(self, collection_name: str):

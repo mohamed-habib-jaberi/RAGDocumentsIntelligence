@@ -5,6 +5,9 @@ RAG Document Intelligence is a document-grounded Retrieval-Augmented Generation
 indexes their embeddings, retrieves relevant context, and generates answers
 with either Ollama or a cloud OpenAI-compatible provider.
 
+Article technique : [Qdrant vs PGVector : construire un RAG interchangeable
+avec Pydantic, SQLAlchemy et FastAPI](docs/articles/qdrant-vs-pgvector-rag.md).
+
 ## Branche `13c-mongodb-postgresql-switch`
 
 Cette branche ajoute une persistance interchangeable entre MongoDB et
