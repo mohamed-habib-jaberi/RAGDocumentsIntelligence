@@ -1,3 +1,5 @@
+"""Create the FastAPI application and coordinate its service lifecycle."""
+
 from fastapi import FastAPI
 from routes import base, data, nlp
 from helpers.config import get_settings
@@ -16,6 +18,7 @@ app = FastAPI()
 setup_metrics(app)
 
 async def startup_span():
+    """Initialize persistence, LLM, vector, and template services at application startup."""
     settings = get_settings()
 
     postgres_conn = f"postgresql+asyncpg://{settings.POSTGRES_USERNAME}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_MAIN_DATABASE}"
@@ -36,7 +39,7 @@ async def startup_span():
     app.embedding_client = llm_provider_factory.create(provider=settings.EMBEDDING_BACKEND)
     app.embedding_client.set_embedding_model(model_id=settings.EMBEDDING_MODEL_ID,
                                              embedding_size=settings.EMBEDDING_MODEL_SIZE)
-    
+
     # vector db client
     app.vectordb_client = vectordb_provider_factory.create(
         provider=settings.VECTOR_DB_BACKEND
@@ -50,6 +53,7 @@ async def startup_span():
 
 
 async def shutdown_span():
+    """Release application services and database clients during shutdown."""
     app.db_engine.dispose()
     await app.vectordb_client.disconnect()
 

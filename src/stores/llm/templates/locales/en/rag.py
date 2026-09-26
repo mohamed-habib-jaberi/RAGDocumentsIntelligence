@@ -1,3 +1,5 @@
+"""Load and interpolate localized prompt templates."""
+
 from string import Template
 
 #### RAG PROMPTS ####

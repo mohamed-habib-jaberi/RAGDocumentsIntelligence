@@ -1,3 +1,5 @@
+"""Define Celery tasks for the data indexing workflow."""
+
 from celery_app import celery_app, get_setup_utils
 from helpers.config import get_settings
 import asyncio
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
                 )
 def index_data_content(self, project_id: int, do_reset: int):
 
+    """Queue vector indexing for all persisted chunks of a project."""
     logger.warning("index_data_content started")
     return asyncio.run(
         _index_data_content(self, project_id, do_reset)
@@ -25,6 +28,7 @@ def index_data_content(self, project_id: int, do_reset: int):
 
 async def _index_data_content(task_instance, project_id: int, do_reset: int):
 
+    """Load persisted chunks, embed them, and store their vectors for retrieval."""
     db_engine, vectordb_client = None, None
 
     try:
@@ -58,7 +62,7 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
             )
 
             raise Exception(f"No project found for project_id: {project_id}")
-    
+
         nlp_controller = NLPController(
             vectordb_client=vectordb_client,
             generation_client=generation_client,
@@ -88,14 +92,14 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
             page_chunks = await chunk_model.get_poject_chunks(project_id=project.project_id, page_no=page_no)
             if len(page_chunks):
                 page_no += 1
-            
+
             if not page_chunks or len(page_chunks) == 0:
                 has_records = False
                 break
 
             chunks_ids =  [ c.chunk_id for c in page_chunks ]
             idx += len(page_chunks)
-            
+
             is_inserted = await nlp_controller.index_into_vector_db(
                 project=project,
                 chunks=page_chunks,
@@ -103,7 +107,7 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
             )
 
             if not is_inserted:
-                
+
 
                 task_instance.update_state(
                     state="FAILURE",
@@ -116,7 +120,7 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
 
             pbar.update(len(page_chunks))
             inserted_items_count += len(page_chunks)
-        
+
 
         task_instance.update_state(
             state="SUCCESS",
@@ -137,7 +141,7 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
         try:
             if db_engine:
                 await db_engine.dispose()
-            
+
             if vectordb_client:
                 await vectordb_client.disconnect()
         except Exception as e:
