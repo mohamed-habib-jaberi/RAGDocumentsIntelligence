@@ -1,20 +1,26 @@
+"""Implement persistence operations for the ProjectModel domain model."""
+
 from .BaseDataModel import BaseDataModel
 from .db_schemes import Project
 from .enums.DataBaseEnum import DataBaseEnum
 
 class ProjectModel(BaseDataModel):
 
+    """Provide persistence behavior for the Project domain entity."""
     def __init__(self, db_client: object):
+        """Initialize project persistence for the selected database client."""
         super().__init__(db_client=db_client)
         self.collection = self.db_client[DataBaseEnum.COLLECTION_PROJECT_NAME.value]
 
     @classmethod
     async def create_instance(cls, db_client: object):
+        """Create a model instance bound to the configured database client."""
         instance = cls(db_client)
         await instance.init_collection()
         return instance
 
     async def init_collection(self):
+        """Create the database indexes required by this model's collection."""
         all_collections = await self.db_client.list_collection_names()
         if DataBaseEnum.COLLECTION_PROJECT_NAME.value not in all_collections:
             self.collection = self.db_client[DataBaseEnum.COLLECTION_PROJECT_NAME.value]
@@ -29,6 +35,7 @@ class ProjectModel(BaseDataModel):
 
     async def create_project(self, project: Project):
 
+        """Persist a project record and return its assigned identifier."""
         result = await self.collection.insert_one(project.dict(by_alias=True, exclude_unset=True))
         project.id = result.inserted_id
 
@@ -36,6 +43,7 @@ class ProjectModel(BaseDataModel):
 
     async def get_project_or_create_one(self, project_id: str):
 
+        """Return the requested project or persist it when it is missing."""
         record = await self.collection.find_one({
             "project_id": project_id
         })
@@ -52,6 +60,7 @@ class ProjectModel(BaseDataModel):
     async def get_all_projects(self, page: int=1, page_size: int=10):
 
         # count total number of documents
+        """Return the projects currently stored by the persistence backend."""
         total_documents = await self.collection.count_documents({})
 
         # calculate total number of pages

@@ -1,3 +1,5 @@
+"""Implement persistence operations for the ChunkModel domain model."""
+
 from .BaseDataModel import BaseDataModel
 from .db_schemes import DataChunk
 from .enums.DataBaseEnum import DataBaseEnum
@@ -6,17 +8,21 @@ from pymongo import InsertOne
 
 class ChunkModel(BaseDataModel):
 
+    """Provide persistence behavior for the Chunk domain entity."""
     def __init__(self, db_client: object):
+        """Initialize document-chunk persistence for the selected database client."""
         super().__init__(db_client=db_client)
         self.collection = self.db_client[DataBaseEnum.COLLECTION_CHUNK_NAME.value]
 
     @classmethod
     async def create_instance(cls, db_client: object):
+        """Create a model instance bound to the configured database client."""
         instance = cls(db_client)
         await instance.init_collection()
         return instance
 
     async def init_collection(self):
+        """Create the database indexes required by this model's collection."""
         all_collections = await self.db_client.list_collection_names()
         if DataBaseEnum.COLLECTION_CHUNK_NAME.value not in all_collections:
             self.collection = self.db_client[DataBaseEnum.COLLECTION_CHUNK_NAME.value]
@@ -29,11 +35,13 @@ class ChunkModel(BaseDataModel):
                 )
 
     async def create_chunk(self, chunk: DataChunk):
+        """Persist one processed document chunk and its metadata."""
         result = await self.collection.insert_one(chunk.dict(by_alias=True, exclude_unset=True))
         chunk._id = result.inserted_id
         return chunk
 
     async def get_chunk(self, chunk_id: str):
+        """Retrieve one persisted document chunk by its identifier."""
         result = await self.collection.find_one({
             "_id": ObjectId(chunk_id)
         })
@@ -45,6 +53,7 @@ class ChunkModel(BaseDataModel):
 
     async def insert_many_chunks(self, chunks: list, batch_size: int=100):
 
+        """Persist a batch of processed document chunks."""
         for i in range(0, len(chunks), batch_size):
             batch = chunks[i:i+batch_size]
 
@@ -58,6 +67,7 @@ class ChunkModel(BaseDataModel):
         return len(chunks)
 
     async def delete_chunks_by_project_id(self, project_id: ObjectId):
+        """Delete every persisted chunk that belongs to the requested project."""
         result = await self.collection.delete_many({
             "chunk_project_id": project_id
         })

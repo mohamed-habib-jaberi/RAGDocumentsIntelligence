@@ -1,3 +1,5 @@
+"""Create the FastAPI application and coordinate its service lifecycle."""
+
 from fastapi import FastAPI
 from routes import base, data
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -7,6 +9,7 @@ from stores.llm.LLMProviderFactory import LLMProviderFactory
 app = FastAPI()
 
 async def startup_db_client():
+    """Create and validate the application database connection during startup."""
     settings = get_settings()
     app.mongo_conn = AsyncIOMotorClient(settings.MONGODB_URL)
     app.db_client = app.mongo_conn[settings.MONGODB_DATABASE]
@@ -23,6 +26,7 @@ async def startup_db_client():
                                              embedding_size=settings.EMBEDDING_MODEL_SIZE)
 
 async def shutdown_db_client():
+    """Close the application database connection during shutdown."""
     app.mongo_conn.close()
 
 # Register lifecycle handlers through FastAPI's supported public API.

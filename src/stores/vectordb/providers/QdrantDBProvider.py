@@ -1,3 +1,5 @@
+"""Implement the QdrantDBProvider vector-database adapter."""
+
 from qdrant_client import models, QdrantClient
 from ..VectorDBInterface import VectorDBInterface
 from ..VectorDBEnums import DistanceMethodEnums
@@ -6,8 +8,10 @@ from typing import List
 
 class QdrantDBProvider(VectorDBInterface):
 
+    """Implement the QdrantDB integration behind its application interface."""
     def __init__(self, db_path: str, distance_method: str):
 
+        """Configure local or remote Qdrant vector storage."""
         self.client = None
         self.db_path = db_path
         self.distance_method = None
@@ -20,27 +24,34 @@ class QdrantDBProvider(VectorDBInterface):
         self.logger = logging.getLogger(__name__)
 
     def connect(self):
+        """Open or validate the connection to the selected vector database."""
         self.client = QdrantClient(path=self.db_path)
 
     def disconnect(self):
+        """Close the vector database client and release its resources."""
         self.client = None
 
     def is_collection_existed(self, collection_name: str) -> bool:
+        """Return whether the requested vector collection currently exists."""
         return self.client.collection_exists(collection_name=collection_name)
     
     def list_all_collections(self) -> List:
+        """Return the names of all vector collections managed by the backend."""
         return self.client.get_collections()
     
     def get_collection_info(self, collection_name: str) -> dict:
+        """Return normalized metadata and record counts for a vector collection."""
         return self.client.get_collection(collection_name=collection_name)
     
     def delete_collection(self, collection_name: str):
+        """Delete a vector collection and all embeddings stored in it."""
         if self.is_collection_existed(collection_name):
             return self.client.delete_collection(collection_name=collection_name)
         
     def create_collection(self, collection_name: str, 
                                 embedding_size: int,
                                 do_reset: bool = False):
+        """Create a vector collection with the requested embedding dimension."""
         if do_reset:
             _ = self.delete_collection(collection_name=collection_name)
         
@@ -61,6 +72,7 @@ class QdrantDBProvider(VectorDBInterface):
                          metadata: dict = None, 
                          record_id: str = None):
         
+        """Insert or update one embedding record in a vector collection."""
         if not self.is_collection_existed(collection_name):
             self.logger.error(f"Can not insert new record to non-existed collection: {collection_name}")
             return False
@@ -87,6 +99,7 @@ class QdrantDBProvider(VectorDBInterface):
                           vectors: list, metadata: list = None, 
                           record_ids: list = None, batch_size: int = 50):
         
+        """Persist a batch of records and return the number successfully inserted."""
         if metadata is None:
             metadata = [None] * len(texts)
 
@@ -124,9 +137,9 @@ class QdrantDBProvider(VectorDBInterface):
         
     def search_by_vector(self, collection_name: str, vector: list, limit: int = 5):
 
+        """Return the stored documents nearest to the supplied query vector."""
         return self.client.search(
             collection_name=collection_name,
             query_vector=vector,
             limit=limit
         )
-
