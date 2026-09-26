@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the data router."""
+
 from fastapi import FastAPI, APIRouter, Depends, UploadFile, status, Request
 from fastapi.responses import JSONResponse
 import os
@@ -23,8 +25,9 @@ data_router = APIRouter(
 @data_router.post("/upload/{project_id}")
 async def upload_data(request: Request, project_id: int, file: UploadFile,
                       app_settings: Settings = Depends(get_settings)):
-        
-    
+
+
+    """Validate and store an uploaded document for the requested project."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -91,6 +94,7 @@ async def upload_data(request: Request, project_id: int, file: UploadFile,
 @data_router.post("/process/{project_id}")
 async def process_endpoint(request: Request, project_id: int, process_request: ProcessRequest):
 
+    """Queue document extraction and chunk persistence for a project."""
     chunk_size = process_request.chunk_size
     overlap_size = process_request.overlap_size
     do_reset = process_request.do_reset
@@ -125,9 +129,9 @@ async def process_endpoint(request: Request, project_id: int, process_request: P
         project_files_ids = {
             asset_record.asset_id: asset_record.asset_name
         }
-    
+
     else:
-        
+
 
         project_files = await asset_model.get_all_project_assets(
             asset_project_id=project.project_id,
@@ -146,7 +150,7 @@ async def process_endpoint(request: Request, project_id: int, process_request: P
                 "signal": ResponseSignal.NO_FILES_ERROR.value,
             }
         )
-    
+
     process_controller = ProcessController(project_id=project_id)
 
     no_records = 0

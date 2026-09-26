@@ -1,3 +1,5 @@
+"""Define database schema objects for asset persistence."""
+
 from .minirag_base import SQLAlchemyBase
 from sqlalchemy import Column, Integer, DateTime, func, String, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -7,6 +9,7 @@ import uuid
 
 class Asset(SQLAlchemyBase):
 
+    """Encapsulate the responsibilities and state of the Asset component."""
     __tablename__ = "assets"
 
     asset_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -29,4 +32,3 @@ class Asset(SQLAlchemyBase):
         Index('ix_asset_project_id', asset_project_id),
         Index('ix_asset_type', asset_type),
     )
-
