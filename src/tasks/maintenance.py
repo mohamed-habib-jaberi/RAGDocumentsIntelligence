@@ -1,3 +1,5 @@
+"""Define Celery tasks for the maintenance workflow."""
+
 import asyncio
 import logging
 
@@ -17,11 +19,13 @@ logger = logging.getLogger(__name__)
 )
 def clean_celery_executions_table(self):
 
+    """Schedule removal of task-execution records older than the retention period."""
     return asyncio.run(_clean_celery_executions_table(self))
 
 
 async def _clean_celery_executions_table(task_instance):
 
+    """Delete expired Celery execution records inside the asynchronous worker context."""
     persistence = None
 
     try:

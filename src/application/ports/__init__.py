@@ -1,3 +1,5 @@
+"""Expose the public components of the ports package."""
+
 from .persistence import (
     AssetRepository,
     ChunkRepository,

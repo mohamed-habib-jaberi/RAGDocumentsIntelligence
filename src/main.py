@@ -1,3 +1,5 @@
+"""Create the FastAPI application and coordinate its service lifecycle."""
+
 from fastapi import FastAPI
 
 from helpers.config import get_settings
@@ -17,6 +19,7 @@ setup_metrics(app)
 
 
 async def startup_span():
+    """Initialize persistence, LLM, vector, and template services at application startup."""
     settings = get_settings()
 
     app.persistence_backend = settings.PERSISTENCE_BACKEND
@@ -63,6 +66,7 @@ async def startup_span():
 
 
 async def shutdown_span():
+    """Release application services and database clients during shutdown."""
     if getattr(app, "persistence", None) is not None:
         await app.persistence.close()
     if getattr(app, "vectordb_client", None) is not None:

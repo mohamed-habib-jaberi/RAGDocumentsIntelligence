@@ -1,3 +1,5 @@
+"""Implement the PGVectorProvider vector-database adapter."""
+
 import json
 import logging
 import re

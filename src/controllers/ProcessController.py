@@ -1,3 +1,5 @@
+"""Coordinate the ProcessController application workflow."""
+
 from .BaseController import BaseController
 from .ProjectController import ProjectController
 import os
@@ -9,11 +11,13 @@ from dataclasses import dataclass
 
 @dataclass
 class Document:
+    """Encapsulate the responsibilities and state of the Document component."""
     page_content: str
     metadata: dict
 
 class ProcessController(BaseController):
 
+    """Coordinate the Process application workflow."""
     def __init__(self, project_id: str):
         """Initialize this instance and its required dependencies."""
         super().__init__()
@@ -42,7 +46,7 @@ class ProcessController(BaseController):
 
         if file_ext == ProcessingEnum.PDF.value:
             return PyMuPDFLoader(file_path)
-        
+
         return None
 
     def get_file_content(self, file_id: str):
@@ -82,7 +86,7 @@ class ProcessController(BaseController):
         return chunks
 
     def process_simpler_splitter(self, texts: List[str], metadatas: List[dict], chunk_size: int, splitter_tag: str="\n"):
-        
+
         """Split text on delimiters while respecting the target chunk size."""
         full_text = " ".join(texts)
 
@@ -111,4 +115,3 @@ class ProcessController(BaseController):
         return chunks
 
 
-    

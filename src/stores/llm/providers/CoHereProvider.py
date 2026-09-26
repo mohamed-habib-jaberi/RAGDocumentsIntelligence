@@ -1,3 +1,5 @@
+"""Implement the CoHereProvider language-model adapter."""
+
 from ..LLMInterface import LLMInterface
 from ..LLMEnums import CoHereEnums, DocumentTypeEnum
 import cohere
@@ -6,11 +8,12 @@ from typing import List, Union
 
 class CoHereProvider(LLMInterface):
 
+    """Implement the CoHere integration behind its application interface."""
     def __init__(self, api_key: str,
                        default_input_max_characters: int=1000,
                        default_generation_max_output_tokens: int=1000,
                        default_generation_temperature: float=0.1):
-        
+
         """Initialize this instance and its required dependencies."""
         self.api_key = api_key
 
@@ -52,7 +55,7 @@ class CoHereProvider(LLMInterface):
         if not self.generation_model_id:
             self.logger.error("Generation model for CoHere was not set")
             return None
-        
+
         max_output_tokens = max_output_tokens if max_output_tokens else self.default_generation_max_output_tokens
         temperature = temperature if temperature else self.default_generation_temperature
 
@@ -67,22 +70,22 @@ class CoHereProvider(LLMInterface):
         if not response or not response.text:
             self.logger.error("Error while generating text with CoHere")
             return None
-        
+
         return response.text
-    
+
     def embed_text(self, text: Union[str, List[str]], document_type: str = None):
         """Convert one or more texts into embedding vectors."""
         if not self.client:
             self.logger.error("CoHere client was not set")
             return None
-        
+
         if isinstance(text, str):
             text = [text]
-        
+
         if not self.embedding_model_id:
             self.logger.error("Embedding model for CoHere was not set")
             return None
-        
+
         input_type = CoHereEnums.DOCUMENT
         if document_type == DocumentTypeEnum.QUERY:
             input_type = CoHereEnums.QUERY
@@ -97,9 +100,9 @@ class CoHereProvider(LLMInterface):
         if not response or not response.embeddings or not response.embeddings.float:
             self.logger.error("Error while embedding text with CoHere")
             return None
-        
+
         return [ f for f in response.embeddings.float ]
-    
+
     def construct_prompt(self, prompt: str, role: str):
         """Build a provider-specific chat message."""
         return {

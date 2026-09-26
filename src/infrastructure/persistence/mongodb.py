@@ -1,3 +1,5 @@
+"""Implement the mongodb part of the persistence infrastructure."""
+
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -12,10 +14,12 @@ TASK_EXECUTIONS_COLLECTION = "celery_task_executions"
 
 
 def _object_id(value: str) -> ObjectId:
+    """Normalize a string or existing value into a MongoDB ObjectId."""
     return value if isinstance(value, ObjectId) else ObjectId(value)
 
 
 class MongoProjectRepository:
+    """Provide backend-specific persistence operations for MongoProject records."""
     def __init__(self, collection):
         """Bind project persistence operations to a MongoDB collection."""
         self.collection = collection
@@ -39,6 +43,7 @@ class MongoProjectRepository:
 
 
 class MongoAssetRepository:
+    """Provide backend-specific persistence operations for MongoAsset records."""
     def __init__(self, collection):
         """Bind asset persistence operations to a MongoDB collection."""
         self.collection = collection
@@ -95,6 +100,7 @@ class MongoAssetRepository:
 
 
 class MongoChunkRepository:
+    """Provide backend-specific persistence operations for MongoChunk records."""
     def __init__(self, collection):
         """Bind document-chunk persistence operations to a MongoDB collection."""
         self.collection = collection
@@ -162,6 +168,7 @@ class MongoChunkRepository:
 
 
 class MongoTaskExecutionRepository:
+    """Provide backend-specific persistence operations for MongoTaskExecution records."""
     def __init__(self, collection):
         """Bind idempotent task-execution operations to a MongoDB collection."""
         self.collection = collection
@@ -225,6 +232,7 @@ class MongoTaskExecutionRepository:
 
 
 class MongoPersistence:
+    """Group the Mongo repositories behind the application persistence contract."""
     def __init__(self, client, database):
         """Expose all MongoDB repositories through one persistence adapter."""
         self.client = client

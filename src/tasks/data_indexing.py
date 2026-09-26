@@ -1,3 +1,5 @@
+"""Define Celery tasks for the data indexing workflow."""
+
 import asyncio
 import logging
 
@@ -18,12 +20,14 @@ logger = logging.getLogger(__name__)
 )
 def index_data_content(self, project_id: int, do_reset: int):
 
+    """Queue vector indexing for all persisted chunks of a project."""
     logger.warning("index_data_content started")
     return asyncio.run(_index_data_content(self, project_id, do_reset))
 
 
 async def _index_data_content(task_instance, project_id: int, do_reset: int):
 
+    """Load persisted chunks, embed them, and store their vectors for retrieval."""
     persistence, vectordb_client = None, None
 
     try:

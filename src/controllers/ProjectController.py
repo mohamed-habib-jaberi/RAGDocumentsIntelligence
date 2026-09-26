@@ -1,10 +1,13 @@
+"""Coordinate the ProjectController application workflow."""
+
 from .BaseController import BaseController
 from fastapi import UploadFile
 from models import ResponseSignal
 import os
 
 class ProjectController(BaseController):
-    
+
+    """Coordinate the Project application workflow."""
     def __init__(self):
         """Initialize this instance and its required dependencies."""
         super().__init__()
@@ -21,4 +24,3 @@ class ProjectController(BaseController):
 
         return project_dir
 
-    

@@ -1,3 +1,5 @@
+"""Coordinate the DataController application workflow."""
+
 from .BaseController import BaseController
 from .ProjectController import ProjectController
 from fastapi import UploadFile
@@ -6,7 +8,8 @@ import re
 import os
 
 class DataController(BaseController):
-    
+
+    """Coordinate the Data application workflow."""
     def __init__(self):
         """Initialize this instance and its required dependencies."""
         super().__init__()
@@ -57,4 +60,3 @@ class DataController(BaseController):
         cleaned_file_name = cleaned_file_name.replace(" ", "_")
 
         return cleaned_file_name
-

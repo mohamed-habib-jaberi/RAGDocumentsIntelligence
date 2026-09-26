@@ -1,3 +1,5 @@
+"""Configure Alembic migration execution for the application database."""
+
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -20,6 +22,7 @@ env_values = dotenv_values(Path(__file__).resolve().parents[4] / ".env")
 
 
 def database_setting(name, default=None):
+    """Build the synchronous database URL used by Alembic migrations."""
     return os.getenv(name) or env_values.get(name) or default
 
 

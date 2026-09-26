@@ -1,3 +1,5 @@
+"""Provide reusable idempotency manager utilities for the application."""
+
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone

@@ -14,8 +14,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply the schema changes defined by this database revision."""
     pass
 
 
 def downgrade() -> None:
+    """Revert the schema changes introduced by this database revision."""
     pass

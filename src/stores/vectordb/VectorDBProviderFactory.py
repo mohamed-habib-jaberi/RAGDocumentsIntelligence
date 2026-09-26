@@ -1,3 +1,5 @@
+"""Define vector-database abstractions, enums, and provider construction logic."""
+
 from pathlib import Path
 
 from sqlalchemy import URL
@@ -8,6 +10,7 @@ from .VectorDBEnums import VectorDBEnums
 
 
 class VectorDBProviderFactory:
+    """Construct the configured VectorDB provider behind a shared interface."""
     def __init__(self, config):
         """Store the central configuration used to select and build a backend."""
         self.config = config

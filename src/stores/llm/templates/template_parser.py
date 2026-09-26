@@ -1,7 +1,10 @@
+"""Load and interpolate localized prompt templates."""
+
 import os
 
 class TemplateParser:
 
+    """Resolve localized prompt templates with fallback-language support."""
     def __init__(self, language: str=None, default_language='en'):
         """Initialize localized prompt lookup with a fallback language."""
         self.current_path = os.path.dirname(os.path.abspath(__file__))
@@ -10,7 +13,7 @@ class TemplateParser:
 
         self.set_language(language)
 
-    
+
     def set_language(self, language: str):
         """Select a supported template language with a safe fallback."""
         if not language:
@@ -26,7 +29,7 @@ class TemplateParser:
         """Load and interpolate a localized prompt template by group and key."""
         if not group or not key:
             return None
-        
+
         group_path = os.path.join(self.current_path, "locales", self.language, f"{group}.py" )
         targeted_language = self.language
         if not os.path.exists(group_path):
@@ -35,12 +38,12 @@ class TemplateParser:
 
         if not os.path.exists(group_path):
             return None
-        
+
         # import group module
         module = __import__(f"stores.llm.templates.locales.{targeted_language}.{group}", fromlist=[group])
 
         if not module:
             return None
-        
+
         key_attribute = getattr(module, key)
         return key_attribute.substitute(vars)

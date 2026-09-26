@@ -1,8 +1,11 @@
+"""Define language-model provider abstractions and construction logic."""
+
 
 from .LLMEnums import LLMEnums
 from .providers import OpenAIProvider, CoHereProvider
 
 class LLMProviderFactory:
+    """Construct the configured LLM provider behind a shared interface."""
     def __init__(self, config: dict):
         """Store the configuration used to construct an LLM provider."""
         self.config = config

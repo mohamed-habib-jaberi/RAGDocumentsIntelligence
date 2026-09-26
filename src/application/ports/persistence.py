@@ -7,12 +7,14 @@ from domain import AssetRecord, ChunkRecord, ProjectRecord, TaskExecutionRecord
 
 
 class ProjectRepository(Protocol):
+    """Provide backend-specific persistence operations for Project records."""
     async def get_or_create(self, project_id: str | int) -> ProjectRecord:
         """Return the requested project, creating it when it does not exist."""
         ...
 
 
 class AssetRepository(Protocol):
+    """Provide backend-specific persistence operations for Asset records."""
     async def create(self, asset: AssetRecord) -> AssetRecord:
         """Persist an uploaded-file asset and return its assigned identifier."""
         ...
@@ -27,6 +29,7 @@ class AssetRepository(Protocol):
 
 
 class ChunkRepository(Protocol):
+    """Provide backend-specific persistence operations for Chunk records."""
     async def delete_by_project(self, project_id: str) -> int:
         """Delete all chunks belonging to a project and return their count."""
         ...
@@ -47,6 +50,7 @@ class ChunkRepository(Protocol):
 
 
 class TaskExecutionRepository(Protocol):
+    """Provide backend-specific persistence operations for TaskExecution records."""
     async def create(
         self,
         task_name: str,
@@ -75,6 +79,7 @@ class TaskExecutionRepository(Protocol):
 
 
 class Persistence(Protocol):
+    """Group the Persistence repositories behind the application persistence contract."""
     projects: ProjectRepository
     assets: AssetRepository
     chunks: ChunkRepository

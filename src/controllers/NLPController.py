@@ -1,3 +1,5 @@
+"""Coordinate the NLPController application workflow."""
+
 import json
 
 from domain import ChunkRecord, ProjectRecord
@@ -7,6 +9,7 @@ from .BaseController import BaseController
 
 
 class NLPController(BaseController):
+    """Coordinate the NLP application workflow."""
     def __init__(
         self, vectordb_client, generation_client, embedding_client, template_parser
     ):

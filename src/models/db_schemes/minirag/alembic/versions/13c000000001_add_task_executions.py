@@ -17,6 +17,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Apply the schema changes defined by this database revision."""
     op.create_table(
         "celery_task_executions",
         sa.Column("execution_id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -47,6 +48,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert the schema changes introduced by this database revision."""
     op.drop_index("ix_celery_task_created_at", table_name="celery_task_executions")
     op.drop_index("ix_celery_task_lookup", table_name="celery_task_executions")
     op.drop_table("celery_task_executions")

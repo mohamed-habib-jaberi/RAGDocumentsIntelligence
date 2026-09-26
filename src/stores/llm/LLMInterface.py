@@ -1,7 +1,10 @@
+"""Define language-model provider abstractions and construction logic."""
+
 from abc import ABC, abstractmethod
 
 class LLMInterface(ABC):
 
+    """Define the operations every LLM implementation must provide."""
     @abstractmethod
     def set_generation_model(self, model_id: str):
         """Configure the model used for text generation."""

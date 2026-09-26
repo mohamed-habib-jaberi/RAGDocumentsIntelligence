@@ -15,6 +15,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Apply the schema changes defined by this database revision."""
     op.create_index(
         "ux_asset_project_id_name",
         "assets",
@@ -24,4 +25,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert the schema changes introduced by this database revision."""
     op.drop_index("ux_asset_project_id_name", table_name="assets")

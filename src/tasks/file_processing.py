@@ -1,3 +1,5 @@
+"""Define Celery tasks for the file processing workflow."""
+
 import asyncio
 import logging
 
@@ -27,6 +29,7 @@ def process_project_files(
     do_reset: int,
 ):
 
+    """Queue background processing for every uploaded file in a project."""
     return asyncio.run(
         _process_project_files(
             self, project_id, file_id, chunk_size, overlap_size, do_reset
@@ -43,6 +46,7 @@ async def _process_project_files(
     do_reset: int,
 ):
 
+    """Process every uploaded asset for a project in the asynchronous worker context."""
     persistence, vectordb_client = None, None
 
     try:

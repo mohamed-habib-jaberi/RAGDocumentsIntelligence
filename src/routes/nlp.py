@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the nlp router."""
+
 import logging
 
 from fastapi import APIRouter, Request, status
@@ -19,6 +21,7 @@ nlp_router = APIRouter(
 @nlp_router.post("/index/push/{project_id}")
 async def index_project(request: Request, project_id: int, push_request: PushRequest):
 
+    """Index the persisted chunks of a project in the active vector database."""
     task = index_data_content.delay(
         project_id=project_id, do_reset=push_request.do_reset
     )
@@ -34,6 +37,7 @@ async def index_project(request: Request, project_id: int, push_request: PushReq
 @nlp_router.get("/index/info/{project_id}")
 async def get_project_index_info(request: Request, project_id: int):
 
+    """Return vector-index metadata for the requested project."""
     project = await request.app.persistence.projects.get_or_create(project_id)
 
     nlp_controller = NLPController(
@@ -66,6 +70,7 @@ async def search_index(
     request: Request, project_id: int, search_request: SearchRequest
 ):
 
+    """Embed a query and return the most similar project documents."""
     project = await request.app.persistence.projects.get_or_create(project_id)
 
     nlp_controller = NLPController(
@@ -96,6 +101,7 @@ async def search_index(
 @nlp_router.post("/index/answer/{project_id}")
 async def answer_rag(request: Request, project_id: int, search_request: SearchRequest):
 
+    """Retrieve project context and return a generated answer for the submitted question."""
     project = await request.app.persistence.projects.get_or_create(project_id)
 
     nlp_controller = NLPController(

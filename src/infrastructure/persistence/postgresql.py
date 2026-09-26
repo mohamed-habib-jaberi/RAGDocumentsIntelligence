@@ -1,3 +1,5 @@
+"""Implement the postgresql part of the persistence infrastructure."""
+
 from datetime import datetime, timezone
 
 from sqlalchemy import delete, func, select
@@ -13,6 +15,7 @@ from models.db_schemes.minirag.schemes import (
 
 
 class PostgresProjectRepository:
+    """Provide backend-specific persistence operations for PostgresProject records."""
     def __init__(self, sessions):
         """Bind project persistence operations to the SQL session factory."""
         self.sessions = sessions
@@ -33,6 +36,7 @@ class PostgresProjectRepository:
 
 
 class PostgresAssetRepository:
+    """Provide backend-specific persistence operations for PostgresAsset records."""
     def __init__(self, sessions):
         """Bind asset persistence operations to the SQL session factory."""
         self.sessions = sessions
@@ -89,6 +93,7 @@ class PostgresAssetRepository:
 
 
 class PostgresChunkRepository:
+    """Provide backend-specific persistence operations for PostgresChunk records."""
     def __init__(self, sessions):
         """Bind document-chunk operations to the SQL session factory."""
         self.sessions = sessions
@@ -159,6 +164,7 @@ class PostgresChunkRepository:
 
 
 class PostgresTaskExecutionRepository:
+    """Provide backend-specific persistence operations for PostgresTaskExecution records."""
     def __init__(self, sessions):
         """Bind idempotent task-execution operations to the SQL session factory."""
         self.sessions = sessions
@@ -227,6 +233,7 @@ class PostgresTaskExecutionRepository:
 
 
 class PostgresPersistence:
+    """Group the Postgres repositories behind the application persistence contract."""
     def __init__(self, engine, sessions):
         """Expose all PostgreSQL repositories through one persistence adapter."""
         self.engine = engine

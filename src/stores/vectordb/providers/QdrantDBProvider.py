@@ -1,3 +1,5 @@
+"""Implement the QdrantDBProvider vector-database adapter."""
+
 import logging
 
 from qdrant_client import QdrantClient, models
@@ -9,6 +11,7 @@ from ..VectorDBInterface import VectorDBInterface
 
 
 class QdrantDBProvider(VectorDBInterface):
+    """Implement the QdrantDB integration behind its application interface."""
     def __init__(
         self,
         db_path: str | None = None,

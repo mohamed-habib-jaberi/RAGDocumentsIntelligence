@@ -1,9 +1,12 @@
+"""Define vector-database abstractions, enums, and provider construction logic."""
+
 from abc import ABC, abstractmethod
 
 from models.db_schemes import RetrievedDocument
 
 
 class VectorDBInterface(ABC):
+    """Define the operations every VectorDB implementation must provide."""
     @abstractmethod
     async def connect(self):
         """Open or validate the connection to the configured service."""

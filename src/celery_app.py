@@ -1,3 +1,5 @@
+"""Configure Celery and construct dependencies used by background workers."""
+
 from celery import Celery
 
 from helpers.config import get_settings
@@ -10,6 +12,7 @@ settings = get_settings()
 
 
 async def get_setup_utils():
+    """Build the controller and parser dependencies used by background tasks."""
     settings = get_settings()
     # Celery uses the same PERSISTENCE_BACKEND as FastAPI, so HTTP requests and
     # background tasks always read and write through the same database type.

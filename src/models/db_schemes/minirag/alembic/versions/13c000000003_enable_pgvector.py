@@ -15,10 +15,12 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Apply the schema changes defined by this database revision."""
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
 
 def downgrade() -> None:
     # Vector collections may still depend on the extension. They are managed
     # at runtime like Qdrant collections, so do not drop it automatically.
+    """Revert the schema changes introduced by this database revision."""
     pass

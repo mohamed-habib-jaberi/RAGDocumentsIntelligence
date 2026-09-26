@@ -1,3 +1,5 @@
+"""Implement the factory part of the persistence infrastructure."""
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine

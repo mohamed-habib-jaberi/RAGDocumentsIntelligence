@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the data router."""
+
 import logging
 import os
 
@@ -31,6 +33,7 @@ async def upload_data(
     app_settings: Settings = Depends(get_settings),
 ):
 
+    """Validate and store an uploaded document for the requested project."""
     project = await request.app.persistence.projects.get_or_create(project_id)
 
     # validate the file properties
@@ -84,6 +87,7 @@ async def process_endpoint(
     request: Request, project_id: int, process_request: ProcessRequest
 ):
 
+    """Queue document extraction and chunk persistence for a project."""
     chunk_size = process_request.chunk_size
     overlap_size = process_request.overlap_size
     do_reset = process_request.do_reset
@@ -106,6 +110,7 @@ async def process_and_push_endpoint(
     request: Request, project_id: int, process_request: ProcessRequest
 ):
 
+    """Queue the complete document-processing and vector-indexing workflow."""
     chunk_size = process_request.chunk_size
     overlap_size = process_request.overlap_size
     do_reset = process_request.do_reset

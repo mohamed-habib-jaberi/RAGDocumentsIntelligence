@@ -1,3 +1,5 @@
+"""Implement the OpenAIProvider language-model adapter."""
+
 from ..LLMInterface import LLMInterface
 from ..LLMEnums import OpenAIEnums
 from openai import OpenAI
@@ -6,11 +8,12 @@ from typing import List, Union
 
 class OpenAIProvider(LLMInterface):
 
+    """Implement the OpenAI integration behind its application interface."""
     def __init__(self, api_key: str, api_url: str=None,
                        default_input_max_characters: int=1000,
                        default_generation_max_output_tokens: int=1000,
                        default_generation_temperature: float=0.1):
-        
+
         """Initialize this instance and its required dependencies."""
         self.api_key = api_key
         self.api_url = api_url
@@ -47,7 +50,7 @@ class OpenAIProvider(LLMInterface):
 
     def generate_text(self, prompt: str, chat_history: list=[], max_output_tokens: int=None,
                             temperature: float = None):
-        
+
         """Generate a response from a prompt and optional chat history."""
         if not self.client:
             self.logger.error("OpenAI client was not set")
@@ -56,7 +59,7 @@ class OpenAIProvider(LLMInterface):
         if not self.generation_model_id:
             self.logger.error("Generation model for OpenAI was not set")
             return None
-        
+
         max_output_tokens = max_output_tokens if max_output_tokens else self.default_generation_max_output_tokens
         temperature = temperature if temperature else self.default_generation_temperature
 
@@ -79,19 +82,19 @@ class OpenAIProvider(LLMInterface):
 
 
     def embed_text(self, text: Union[str, List[str]], document_type: str = None):
-        
+
         """Convert one or more texts into embedding vectors."""
         if not self.client:
             self.logger.error("OpenAI client was not set")
             return None
-        
+
         if isinstance(text, str):
             text = [text]
 
         if not self.embedding_model_id:
             self.logger.error("Embedding model for OpenAI was not set")
             return None
-        
+
         response = self.client.embeddings.create(
             model = self.embedding_model_id,
             input = text,
@@ -109,7 +112,6 @@ class OpenAIProvider(LLMInterface):
             "role": role,
             "content": prompt,
         }
-    
 
 
-    
+
