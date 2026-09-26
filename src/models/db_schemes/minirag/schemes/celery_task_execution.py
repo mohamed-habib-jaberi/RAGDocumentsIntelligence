@@ -1,3 +1,5 @@
+"""Define database schema objects for celery task execution persistence."""
+
 from .minirag_base import SQLAlchemyBase
 from sqlalchemy import Column, Integer, DateTime, func, String, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -6,6 +8,7 @@ import uuid
 
 class CeleryTaskExecution(SQLAlchemyBase):
 
+    """Encapsulate the responsibilities and state of the CeleryTaskExecution component."""
     __tablename__ = "celery_task_executions"
 
     execution_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -30,5 +33,4 @@ class CeleryTaskExecution(SQLAlchemyBase):
         Index('ixz_task_execution_created_at', created_at),
         Index('ixz_celery_task_id', celery_task_id),
     )
-
 

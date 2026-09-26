@@ -1,3 +1,5 @@
+"""Expose the public components of the schemes package."""
+
 from .minirag_base import SQLAlchemyBase
 from .asset import Asset
 from .project import Project

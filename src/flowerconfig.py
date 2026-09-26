@@ -1,3 +1,5 @@
+"""Define the flowerconfig components used by the application."""
+
 from dotenv import dotenv_values
 config = dotenv_values(".env")
 
@@ -9,4 +11,3 @@ auto_refresh = True
 
 # Authentication (optional)
 basic_auth = [f'admin:{config["CELERY_FLOWER_PASSWORD"]}']
-
