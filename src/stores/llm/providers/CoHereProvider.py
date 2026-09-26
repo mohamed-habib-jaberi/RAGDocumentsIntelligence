@@ -1,3 +1,5 @@
+"""Implement the CoHereProvider language-model adapter."""
+
 from ..LLMInterface import LLMInterface
 from ..LLMEnums import CoHereEnums, DocumentTypeEnum
 import cohere
@@ -5,11 +7,13 @@ import logging
 
 class CoHereProvider(LLMInterface):
 
+    """Implement the CoHere integration behind its application interface."""
     def __init__(self, api_key: str,
                        default_input_max_characters: int=1000,
                        default_generation_max_output_tokens: int=1000,
                        default_generation_temperature: float=0.1):
-        
+
+        """Configure the Cohere generation and embedding client."""
         self.api_key = api_key
 
         self.default_input_max_characters = default_input_max_characters
@@ -27,18 +31,22 @@ class CoHereProvider(LLMInterface):
         self.logger = logging.getLogger(__name__)
 
     def set_generation_model(self, model_id: str):
+        """Configure the model used for text generation."""
         self.generation_model_id = model_id
 
     def set_embedding_model(self, model_id: str, embedding_size: int):
+        """Configure the model and vector dimension used for embeddings."""
         self.embedding_model_id = model_id
         self.embedding_size = embedding_size
 
     def process_text(self, text: str):
+        """Normalize and truncate text before sending it to an LLM provider."""
         return text[:self.default_input_max_characters].strip()
 
     def generate_text(self, prompt: str, chat_history: list=[], max_output_tokens: int=None,
                             temperature: float = None):
 
+        """Generate text from a prompt and optional conversation history."""
         if not self.client:
             self.logger.error("CoHere client was not set")
             return None
@@ -46,7 +54,7 @@ class CoHereProvider(LLMInterface):
         if not self.generation_model_id:
             self.logger.error("Generation model for CoHere was not set")
             return None
-        
+
         max_output_tokens = max_output_tokens if max_output_tokens else self.default_generation_max_output_tokens
         temperature = temperature if temperature else self.default_generation_temperature
 
@@ -61,18 +69,19 @@ class CoHereProvider(LLMInterface):
         if not response or not response.text:
             self.logger.error("Error while generating text with CoHere")
             return None
-        
+
         return response.text
-    
+
     def embed_text(self, text: str, document_type: str = None):
+        """Convert one or more input texts into embedding vectors."""
         if not self.client:
             self.logger.error("CoHere client was not set")
             return None
-        
+
         if not self.embedding_model_id:
             self.logger.error("Embedding model for CoHere was not set")
             return None
-        
+
         input_type = CoHereEnums.DOCUMENT
         if document_type == DocumentTypeEnum.QUERY:
             input_type = CoHereEnums.QUERY
@@ -87,10 +96,11 @@ class CoHereProvider(LLMInterface):
         if not response or not response.embeddings or not response.embeddings.float:
             self.logger.error("Error while embedding text with CoHere")
             return None
-        
+
         return response.embeddings.float[0]
-    
+
     def construct_prompt(self, prompt: str, role: str):
+        """Build a provider-specific chat message from text and a role."""
         return {
             "role": role,
             "text": prompt,

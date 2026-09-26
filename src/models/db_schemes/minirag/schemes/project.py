@@ -1,3 +1,5 @@
+"""Define database schema objects for project persistence."""
+
 from .minirag_base import SQLAlchemyBase
 from sqlalchemy import Column, Integer, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -6,8 +8,9 @@ from sqlalchemy.orm import relationship
 
 class Project(SQLAlchemyBase):
 
+    """Encapsulate the responsibilities and state of the Project component."""
     __tablename__ = "projects"
-    
+
     project_id = Column(Integer, primary_key=True, autoincrement=True)
     project_uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False)
 
