@@ -1,3 +1,5 @@
+"""Configure Celery and construct dependencies used by background workers."""
+
 from celery import Celery
 from helpers.config import get_settings
 
@@ -10,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 settings = get_settings()
 
 async def get_setup_utils():
+    """Build the controller and parser dependencies used by background tasks."""
     settings = get_settings()
 
     postgres_conn = f"postgresql+asyncpg://{settings.POSTGRES_USERNAME}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_MAIN_DATABASE}"
@@ -30,7 +33,7 @@ async def get_setup_utils():
     embedding_client = llm_provider_factory.create(provider=settings.EMBEDDING_BACKEND)
     embedding_client.set_embedding_model(model_id=settings.EMBEDDING_MODEL_ID,
                                              embedding_size=settings.EMBEDDING_MODEL_SIZE)
-    
+
     # vector db client
     vectordb_client = vectordb_provider_factory.create(
         provider=settings.VECTOR_DB_BACKEND

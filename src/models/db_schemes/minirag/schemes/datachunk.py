@@ -1,3 +1,5 @@
+"""Define database schema objects for datachunk persistence."""
+
 from .minirag_base import SQLAlchemyBase
 from sqlalchemy import Column, Integer, DateTime, func, String, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -8,6 +10,7 @@ import uuid
 
 class DataChunk(SQLAlchemyBase):
 
+    """Encapsulate the responsibilities and state of the DataChunk component."""
     __tablename__ = "chunks"
 
     chunk_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -32,5 +35,6 @@ class DataChunk(SQLAlchemyBase):
     )
 
 class RetrievedDocument(BaseModel):
+    """Encapsulate the responsibilities and state of the RetrievedDocument component."""
     text: str
     score: float

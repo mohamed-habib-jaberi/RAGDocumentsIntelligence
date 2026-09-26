@@ -1,3 +1,5 @@
+"""Define Celery tasks for the file processing workflow."""
+
 from celery_app import celery_app, get_setup_utils
 from helpers.config import get_settings
 import asyncio
@@ -22,6 +24,7 @@ def process_project_files(self, project_id: int,
                           file_id: int, chunk_size: int,
                           overlap_size: int, do_reset: int):
 
+    """Queue background processing for every uploaded file in a project."""
     asyncio.run(
         _process_project_files(self, project_id, file_id, chunk_size,
                                overlap_size, do_reset)
@@ -32,9 +35,10 @@ async def _process_project_files(task_instance, project_id: int,
                                  file_id: int, chunk_size: int,
                                  overlap_size: int, do_reset: int):
 
-    
+
+    """Process every uploaded asset for a project in the asynchronous worker context."""
     db_engine, vectordb_client = None, None
-    
+
     try:
 
         (db_engine, db_client, llm_provider_factory, 
@@ -81,9 +85,9 @@ async def _process_project_files(task_instance, project_id: int,
             project_files_ids = {
                 asset_record.asset_id: asset_record.asset_name
             }
-        
+
         else:
-            
+
 
             project_files = await asset_model.get_all_project_assets(
                 asset_project_id=project.project_id,
@@ -105,7 +109,7 @@ async def _process_project_files(task_instance, project_id: int,
             )
 
             raise Exception(f"No files found for project_id: {project.project_id}")
-        
+
         process_controller = ProcessController(project_id=project_id)
 
         no_records = 0
@@ -141,7 +145,7 @@ async def _process_project_files(task_instance, project_id: int,
             )
 
             if file_chunks is None or len(file_chunks) == 0:
-                
+
                 logger.error(f"No chunks for file_id: {file_id}")
                 pass
 
@@ -173,7 +177,7 @@ async def _process_project_files(task_instance, project_id: int,
                     "inserted_chunks": no_records,
                     "processed_files": no_files
                 }
-    
+
     except Exception as e:
         logger.error(f"Task failed: {str(e)}")
         raise
@@ -181,7 +185,7 @@ async def _process_project_files(task_instance, project_id: int,
         try:
             if db_engine:
                 await db_engine.dispose()
-            
+
             if vectordb_client:
                 await vectordb_client.disconnect()
         except Exception as e:
