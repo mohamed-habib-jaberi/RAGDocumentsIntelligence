@@ -8,11 +8,13 @@ import os
 class DataController(BaseController):
     
     def __init__(self):
+        """Initialize this instance and its required dependencies."""
         super().__init__()
         self.size_scale = 1048576 # convert MB to bytes
 
     def validate_uploaded_file(self, file: UploadFile):
 
+        """Validate the uploaded file type and configured size limit."""
         if file.content_type not in self.app_settings.FILE_ALLOWED_TYPES:
             return False, ResponseSignal.FILE_TYPE_NOT_SUPPORTED.value
 
@@ -23,6 +25,7 @@ class DataController(BaseController):
 
     def generate_unique_filepath(self, orig_file_name: str, project_id: str):
 
+        """Create a collision-resistant path and file identifier."""
         random_key = self.generate_random_string()
         project_path = ProjectController().get_project_path(project_id=project_id)
 
@@ -47,11 +50,11 @@ class DataController(BaseController):
     def get_clean_file_name(self, orig_file_name: str):
 
         # remove any special characters, except underscore and .
+        """Remove unsafe characters from an uploaded file name."""
         cleaned_file_name = re.sub(r'[^\w.]', '', orig_file_name.strip())
 
         # replace spaces with underscore
         cleaned_file_name = cleaned_file_name.replace(" ", "_")
 
         return cleaned_file_name
-
 

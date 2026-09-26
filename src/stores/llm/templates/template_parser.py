@@ -3,6 +3,7 @@ import os
 class TemplateParser:
 
     def __init__(self, language: str=None, default_language='en'):
+        """Initialize localized prompt lookup with a fallback language."""
         self.current_path = os.path.dirname(os.path.abspath(__file__))
         self.default_language = default_language
         self.language = None
@@ -11,6 +12,7 @@ class TemplateParser:
 
     
     def set_language(self, language: str):
+        """Select a supported template language with a safe fallback."""
         if not language:
             self.language = self.default_language
 
@@ -21,6 +23,7 @@ class TemplateParser:
             self.language = self.default_language
 
     def get(self, group: str, key: str, vars: dict={}):
+        """Load and interpolate a localized prompt template by group and key."""
         if not group or not key:
             return None
         

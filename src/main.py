@@ -21,6 +21,8 @@ async def startup_span():
 
     app.persistence_backend = settings.PERSISTENCE_BACKEND
     try:
+        # create_persistence reads PERSISTENCE_BACKEND and activates MongoDB
+        # or PostgreSQL for every repository exposed to the application.
         app.persistence = await create_persistence(settings)
 
         llm_provider_factory = LLMProviderFactory(settings)
@@ -43,10 +45,9 @@ async def startup_span():
             embedding_size=settings.EMBEDDING_MODEL_SIZE,
         )
 
-        # vector db client
-        app.vectordb_client = vectordb_provider_factory.create(
-            provider=settings.VECTOR_DB_BACKEND
-        )
+        # The factory reads VECTOR_DB_BACKEND and activates Qdrant or PGVector.
+        # No route or controller needs backend-specific selection logic.
+        app.vectordb_client = vectordb_provider_factory.create()
         await app.vectordb_client.connect()
 
         app.template_parser = TemplateParser(

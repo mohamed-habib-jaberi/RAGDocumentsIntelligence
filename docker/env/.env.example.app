@@ -5,10 +5,15 @@ FILE_ALLOWED_TYPES='["text/plain", "application/pdf"]'
 FILE_MAX_SIZE=10
 FILE_DEFAULT_CHUNK_SIZE=512000
 
+# Single persistence switch. Change only this value, then recreate API/Celery.
+# Supported values: mongodb or postgresql.
 PERSISTENCE_BACKEND="mongodb"
+
+# MongoDB settings, ignored when PERSISTENCE_BACKEND="postgresql".
 MONGODB_URL="mongodb://mongodb:27017"
 MONGODB_DATABASE="rag_document_intelligence"
 
+# PostgreSQL settings. Also required when VECTOR_DB_BACKEND="PGVECTOR".
 POSTGRES_USERNAME="postgres"
 POSTGRES_PASSWORD="postgres_password"
 POSTGRES_HOST="pgvector"
@@ -34,6 +39,7 @@ INPUT_DAFAULT_MAX_CHARACTERS=1024
 GENERATION_DAFAULT_MAX_TOKENS=200
 GENERATION_DAFAULT_TEMPERATURE=0.1
 
+# Single vector-store switch. Change only this value, then recreate API/Celery.
 VECTOR_DB_BACKEND="QDRANT"
 VECTOR_DB_URL="http://qdrant:6333"
 VECTOR_DB_PATH="qdrant_db"

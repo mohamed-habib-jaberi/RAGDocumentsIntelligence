@@ -6,9 +6,11 @@ import os
 class ProjectController(BaseController):
     
     def __init__(self):
+        """Initialize this instance and its required dependencies."""
         super().__init__()
 
     def get_project_path(self, project_id: str):
+        """Return the project upload directory, creating it when needed."""
         project_dir = os.path.join(
             self.files_dir,
             str(project_id)

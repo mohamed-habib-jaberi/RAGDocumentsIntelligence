@@ -8,6 +8,7 @@ class Project(BaseModel):
 
     @validator('project_id')
     def validate_project_id(cls, value):
+        """Validate and normalize the external project identifier."""
         if not value.isalnum():
             raise ValueError('project_id must be alphanumeric')
 
@@ -19,6 +20,7 @@ class Project(BaseModel):
     @classmethod
     def get_indexes(cls):
 
+        """Return the indexes declared for this document model."""
         return [
             {
                 "key": [

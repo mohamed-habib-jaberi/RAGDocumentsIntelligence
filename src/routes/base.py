@@ -1,10 +1,10 @@
-from fastapi import FastAPI, APIRouter, Depends
-import os
-from helpers.config import get_settings, Settings
-from time import sleep
 import logging
 
-logger = logging.getLogger('uvicorn.error')
+from fastapi import APIRouter, Depends
+
+from helpers.config import Settings, get_settings
+
+logger = logging.getLogger("uvicorn.error")
 
 base_router = APIRouter(
     prefix="/api/v1",
@@ -20,4 +20,6 @@ async def welcome(app_settings: Settings = Depends(get_settings)):
     return {
         "app_name": app_name,
         "app_version": app_version,
+        "persistence_backend": app_settings.PERSISTENCE_BACKEND,
+        "vector_db_backend": app_settings.VECTOR_DB_BACKEND,
     }

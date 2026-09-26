@@ -9,16 +9,19 @@ class IdempotencyManager:
     """Backend-neutral Celery idempotence service."""
 
     def __init__(self, repository: TaskExecutionRepository):
+        """Initialize this instance and its required dependencies."""
         self.repository = repository
 
     @staticmethod
     def create_args_hash(task_name, task_args):
+        """Build a stable hash identifying a task name and its arguments."""
         payload = {**task_args, "task_name": task_name}
         return hashlib.sha256(
             json.dumps(payload, sort_keys=True, default=str).encode()
         ).hexdigest()
 
     async def create_task_record(self, task_name, task_args, celery_task_id=None):
+        """Persist a new idempotent task-execution record."""
         return await self.repository.create(
             task_name,
             self.create_args_hash(task_name, task_args),
@@ -27,9 +30,11 @@ class IdempotencyManager:
         )
 
     async def update_task_status(self, execution_id, status, result=None):
+        """Persist the latest status and optional result for a task."""
         await self.repository.update(execution_id, status, result)
 
     async def get_existing_task(self, task_name, task_args, celery_task_id):
+        """Return an existing execution matching the task identity."""
         return await self.repository.find(
             task_name,
             self.create_args_hash(task_name, task_args),
@@ -39,6 +44,7 @@ class IdempotencyManager:
     async def should_execute_task(
         self, task_name, task_args, celery_task_id, task_time_limit=600
     ):
+        """Decide whether a task is new, completed, running, or stale."""
         record = await self.get_existing_task(task_name, task_args, celery_task_id)
         if not record or record.status == "FAILURE":
             return True, record
@@ -55,5 +61,6 @@ class IdempotencyManager:
         return bool(is_stale), record
 
     async def cleanup_old_tasks(self, time_retention=86400):
+        """Delete task-execution records older than the retention period."""
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=time_retention)
         return await self.repository.cleanup(cutoff)

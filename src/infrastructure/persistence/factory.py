@@ -11,6 +11,9 @@ from .postgresql import PostgresPersistence
 
 async def create_persistence(settings) -> Persistence:
     """Composition root for the selected persistence adapter."""
+    # Centralized selection: callers use this function without importing a
+    # MongoDB or PostgreSQL implementation directly. PERSISTENCE_BACKEND is
+    # the only setting that chooses the active persistence adapter.
     if settings.PERSISTENCE_BACKEND == "mongodb":
         client = AsyncIOMotorClient(settings.MONGODB_URL)
         database = client[settings.MONGODB_DATABASE]

@@ -15,6 +15,7 @@ class DataChunk(BaseModel):
 
     @classmethod
     def get_indexes(cls):
+        """Return the indexes declared for this document model."""
         return [
             {
                 "key": [

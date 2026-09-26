@@ -11,6 +11,8 @@ settings = get_settings()
 
 async def get_setup_utils():
     settings = get_settings()
+    # Celery uses the same PERSISTENCE_BACKEND as FastAPI, so HTTP requests and
+    # background tasks always read and write through the same database type.
     persistence = await create_persistence(settings)
 
     llm_provider_factory = LLMProviderFactory(settings)
@@ -25,9 +27,9 @@ async def get_setup_utils():
         model_id=settings.EMBEDDING_MODEL_ID,
         embedding_size=settings.EMBEDDING_MODEL_SIZE,
     )
-    vectordb_client = vectordb_provider_factory.create(
-        provider=settings.VECTOR_DB_BACKEND
-    )
+    # Celery reads the same VECTOR_DB_BACKEND as FastAPI, which guarantees
+    # that indexing tasks and HTTP searches use the selected vector store.
+    vectordb_client = vectordb_provider_factory.create()
     await vectordb_client.connect()
     template_parser = TemplateParser(
         language=settings.PRIMARY_LANG, default_language=settings.DEFAULT_LANG

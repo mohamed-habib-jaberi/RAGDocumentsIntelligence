@@ -28,6 +28,7 @@ class PGVectorProvider(VectorDBInterface):
         distance_method: str = DistanceMethodEnums.COSINE.value,
         index_threshold: int = 100,
     ):
+        """Initialize this instance and its required dependencies."""
         self.engine = engine
         self.sessions = sessionmaker(
             engine, class_=AsyncSession, expire_on_commit=False
@@ -47,15 +48,18 @@ class PGVectorProvider(VectorDBInterface):
 
     @classmethod
     def _validate_collection_name(cls, collection_name: str) -> str:
+        """Validate a collection name before using it in SQL identifiers."""
         if not cls._COLLECTION_PATTERN.fullmatch(collection_name):
             raise ValueError(f"Invalid vector collection name: {collection_name}")
         return collection_name
 
     @staticmethod
     def _vector_literal(vector: list) -> str:
+        """Serialize numeric vector values using PostgreSQL vector syntax."""
         return "[" + ",".join(str(float(value)) for value in vector) + "]"
 
     async def connect(self):
+        """Open or validate the connection to the configured service."""
         async with self.engine.connect() as connection:
             result = await connection.execute(
                 sql_text("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
@@ -67,9 +71,11 @@ class PGVectorProvider(VectorDBInterface):
                 )
 
     async def disconnect(self):
+        """Close the client and release its underlying resources."""
         await self.engine.dispose()
 
     async def is_collection_existed(self, collection_name: str) -> bool:
+        """Return whether the requested vector collection exists."""
         collection_name = self._validate_collection_name(collection_name)
         async with self.sessions() as session:
             result = await session.execute(
@@ -84,6 +90,7 @@ class PGVectorProvider(VectorDBInterface):
             return bool(result.scalar_one())
 
     async def list_all_collections(self) -> list[str]:
+        """Return the names of all managed vector collections."""
         async with self.sessions() as session:
             result = await session.execute(
                 sql_text(
@@ -95,6 +102,7 @@ class PGVectorProvider(VectorDBInterface):
             return list(result.scalars().all())
 
     async def get_collection_info(self, collection_name: str) -> dict | None:
+        """Return normalized metadata for a vector collection."""
         collection_name = self._validate_collection_name(collection_name)
         if not await self.is_collection_existed(collection_name):
             return None
@@ -112,6 +120,7 @@ class PGVectorProvider(VectorDBInterface):
             }
 
     async def delete_collection(self, collection_name: str):
+        """Delete a vector collection and all vectors stored in it."""
         collection_name = self._validate_collection_name(collection_name)
         async with self.sessions() as session:
             await session.execute(sql_text(f'DROP TABLE IF EXISTS "{collection_name}"'))
@@ -121,6 +130,7 @@ class PGVectorProvider(VectorDBInterface):
     async def create_collection(
         self, collection_name: str, embedding_size: int, do_reset: bool = False
     ):
+        """Create a vector collection with the requested embedding dimension."""
         collection_name = self._validate_collection_name(collection_name)
         embedding_size = int(embedding_size)
         if embedding_size <= 0:
@@ -148,6 +158,7 @@ class PGVectorProvider(VectorDBInterface):
         return True
 
     async def _create_vector_index(self, collection_name: str):
+        """Create the configured approximate-search index when useful."""
         collection_name = self._validate_collection_name(collection_name)
         index_name = self._validate_collection_name(f"ix_{collection_name}_embedding")
         async with self.sessions() as session:
@@ -174,6 +185,7 @@ class PGVectorProvider(VectorDBInterface):
         metadata: dict = None,
         record_id: str = None,
     ):
+        """Insert or update one vector record in a collection."""
         return await self.insert_many(
             collection_name=collection_name,
             texts=[text],
@@ -192,6 +204,7 @@ class PGVectorProvider(VectorDBInterface):
         record_ids: list = None,
         batch_size: int = 50,
     ):
+        """Insert or update a batch of vector records in a collection."""
         collection_name = self._validate_collection_name(collection_name)
         if not await self.is_collection_existed(collection_name):
             return False
@@ -239,6 +252,7 @@ class PGVectorProvider(VectorDBInterface):
     async def search_by_vector(
         self, collection_name: str, vector: list, limit: int
     ) -> list[RetrievedDocument]:
+        """Return the documents nearest to the supplied query vector."""
         collection_name = self._validate_collection_name(collection_name)
         if not await self.is_collection_existed(collection_name):
             return []

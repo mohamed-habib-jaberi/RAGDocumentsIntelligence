@@ -4,9 +4,11 @@ from .providers import OpenAIProvider, CoHereProvider
 
 class LLMProviderFactory:
     def __init__(self, config: dict):
+        """Store the configuration used to construct an LLM provider."""
         self.config = config
 
     def create(self, provider: str):
+        """Create the requested OpenAI or Cohere provider from configuration."""
         if provider == LLMEnums.OPENAI.value:
             return OpenAIProvider(
                 api_key = self.config.OPENAI_API_KEY,

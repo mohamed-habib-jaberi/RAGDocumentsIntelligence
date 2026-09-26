@@ -14,9 +14,11 @@ from models.db_schemes.minirag.schemes import (
 
 class PostgresProjectRepository:
     def __init__(self, sessions):
+        """Bind project persistence operations to the SQL session factory."""
         self.sessions = sessions
 
     async def get_or_create(self, project_id):
+        """Return the requested record, creating it when it is missing."""
         numeric_id = int(project_id)
         async with self.sessions() as session:
             statement = (
@@ -32,9 +34,11 @@ class PostgresProjectRepository:
 
 class PostgresAssetRepository:
     def __init__(self, sessions):
+        """Bind asset persistence operations to the SQL session factory."""
         self.sessions = sessions
 
     async def create(self, asset):
+        """Persist an asset and return its database-backed domain record."""
         async with self.sessions() as session:
             record = Asset(
                 asset_project_id=int(asset.asset_project_id),
@@ -49,6 +53,7 @@ class PostgresAssetRepository:
             return self._to_record(record)
 
     async def get(self, project_id, asset_name):
+        """Find one asset by its project and generated file name."""
         async with self.sessions() as session:
             result = await session.execute(
                 select(Asset).where(
@@ -60,6 +65,7 @@ class PostgresAssetRepository:
             return self._to_record(record) if record else None
 
     async def list(self, project_id, asset_type):
+        """List the assets of the requested type that belong to a project."""
         async with self.sessions() as session:
             result = await session.execute(
                 select(Asset).where(
@@ -71,6 +77,7 @@ class PostgresAssetRepository:
 
     @staticmethod
     def _to_record(record):
+        """Convert a backend-native object into a domain record."""
         return AssetRecord(
             id=str(record.asset_id),
             asset_project_id=str(record.asset_project_id),
@@ -83,9 +90,11 @@ class PostgresAssetRepository:
 
 class PostgresChunkRepository:
     def __init__(self, sessions):
+        """Bind document-chunk operations to the SQL session factory."""
         self.sessions = sessions
 
     async def delete_by_project(self, project_id):
+        """Delete all records associated with the supplied project."""
         async with self.sessions() as session:
             result = await session.execute(
                 delete(DataChunk).where(DataChunk.chunk_project_id == int(project_id))
@@ -94,6 +103,7 @@ class PostgresChunkRepository:
             return result.rowcount
 
     async def insert_many(self, chunks):
+        """Persist document chunks and assign their generated identifiers."""
         async with self.sessions() as session:
             records = [
                 DataChunk(
@@ -114,6 +124,7 @@ class PostgresChunkRepository:
             return len(records)
 
     async def list(self, project_id, page, page_size):
+        """Return one ordered page of document chunks for a project."""
         async with self.sessions() as session:
             result = await session.execute(
                 select(DataChunk)
@@ -125,6 +136,7 @@ class PostgresChunkRepository:
             return [self._to_record(record) for record in result.scalars().all()]
 
     async def count(self, project_id):
+        """Return the number of records matching the supplied scope."""
         async with self.sessions() as session:
             result = await session.execute(
                 select(func.count(DataChunk.chunk_id)).where(
@@ -135,6 +147,7 @@ class PostgresChunkRepository:
 
     @staticmethod
     def _to_record(record):
+        """Convert a backend-native object into a domain record."""
         return ChunkRecord(
             id=str(record.chunk_id),
             chunk_text=record.chunk_text,
@@ -147,9 +160,11 @@ class PostgresChunkRepository:
 
 class PostgresTaskExecutionRepository:
     def __init__(self, sessions):
+        """Bind idempotent task-execution operations to the SQL session factory."""
         self.sessions = sessions
 
     async def create(self, task_name, args_hash, task_args, celery_task_id):
+        """Persist a pending Celery execution used for idempotence checks."""
         async with self.sessions() as session:
             record = CeleryTaskExecution(
                 task_name=task_name,
@@ -165,6 +180,7 @@ class PostgresTaskExecutionRepository:
             return self._to_record(record)
 
     async def update(self, execution_id, status, result=None):
+        """Update the matching record with the supplied values."""
         async with self.sessions() as session:
             record = await session.get(CeleryTaskExecution, int(execution_id))
             if record:
@@ -176,6 +192,7 @@ class PostgresTaskExecutionRepository:
                 await session.commit()
 
     async def find(self, task_name, args_hash, celery_task_id):
+        """Find and return the record matching the supplied identity."""
         async with self.sessions() as session:
             result = await session.execute(
                 select(CeleryTaskExecution).where(
@@ -188,6 +205,7 @@ class PostgresTaskExecutionRepository:
             return self._to_record(record) if record else None
 
     async def cleanup(self, cutoff):
+        """Delete records older than the supplied cutoff."""
         async with self.sessions() as session:
             result = await session.execute(
                 delete(CeleryTaskExecution).where(
@@ -199,6 +217,7 @@ class PostgresTaskExecutionRepository:
 
     @staticmethod
     def _to_record(record):
+        """Convert a backend-native object into a domain record."""
         return TaskExecutionRecord(
             execution_id=str(record.execution_id),
             status=record.status,
@@ -209,6 +228,7 @@ class PostgresTaskExecutionRepository:
 
 class PostgresPersistence:
     def __init__(self, engine, sessions):
+        """Expose all PostgreSQL repositories through one persistence adapter."""
         self.engine = engine
         self.projects = PostgresProjectRepository(sessions)
         self.assets = PostgresAssetRepository(sessions)
@@ -216,8 +236,10 @@ class PostgresPersistence:
         self.task_executions = PostgresTaskExecutionRepository(sessions)
 
     async def initialize(self):
+        """Verify that the configured PostgreSQL engine accepts connections."""
         async with self.engine.connect() as connection:
             await connection.execute(select(1))
 
     async def close(self):
+        """Release the connections owned by this adapter."""
         await self.engine.dispose()

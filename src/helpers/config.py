@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     MONGODB_URL: str | None = None
     MONGODB_DATABASE: str | None = None
 
-    # Select once at process startup. Requests must never switch databases.
+    # Unique persistence switch. Set mongodb or postgresql in the active .env,
+    # then restart FastAPI and Celery so every process loads the same backend.
     PERSISTENCE_BACKEND: Literal["mongodb", "postgresql"] = "mongodb"
 
     # PostgreSQL is optional and is only required when PERSISTENCE_BACKEND is
@@ -53,6 +54,8 @@ class Settings(BaseSettings):
     GENERATION_DAFAULT_MAX_TOKENS: int = 200
     GENERATION_DAFAULT_TEMPERATURE: float = 0.1
 
+    # Unique vector-store switch. Set QDRANT or PGVECTOR in the active .env,
+    # then restart FastAPI and Celery so every process loads the same backend.
     VECTOR_DB_BACKEND: Literal["QDRANT", "PGVECTOR"] = "QDRANT"
     # Set a URL when API and workers must share a Qdrant server. Leave empty
     # only for a single-process local database stored at VECTOR_DB_PATH.

@@ -10,6 +10,7 @@ REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP Request Laten
 class PrometheusMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
 
+        """Measure an HTTP request and attach Prometheus metrics."""
         start_time = time.time()
 
         # Process the request

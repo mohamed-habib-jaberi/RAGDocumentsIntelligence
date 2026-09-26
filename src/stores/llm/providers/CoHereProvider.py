@@ -11,6 +11,7 @@ class CoHereProvider(LLMInterface):
                        default_generation_max_output_tokens: int=1000,
                        default_generation_temperature: float=0.1):
         
+        """Initialize this instance and its required dependencies."""
         self.api_key = api_key
 
         self.default_input_max_characters = default_input_max_characters
@@ -28,18 +29,22 @@ class CoHereProvider(LLMInterface):
         self.logger = logging.getLogger(__name__)
 
     def set_generation_model(self, model_id: str):
+        """Configure the model used for text generation."""
         self.generation_model_id = model_id
 
     def set_embedding_model(self, model_id: str, embedding_size: int):
+        """Configure the embedding model and its vector dimension."""
         self.embedding_model_id = model_id
         self.embedding_size = embedding_size
 
     def process_text(self, text: str):
+        """Normalize and truncate text to the provider input limit."""
         return text[:self.default_input_max_characters].strip()
 
     def generate_text(self, prompt: str, chat_history: list=[], max_output_tokens: int=None,
                             temperature: float = None):
 
+        """Generate a response from a prompt and optional chat history."""
         if not self.client:
             self.logger.error("CoHere client was not set")
             return None
@@ -66,6 +71,7 @@ class CoHereProvider(LLMInterface):
         return response.text
     
     def embed_text(self, text: Union[str, List[str]], document_type: str = None):
+        """Convert one or more texts into embedding vectors."""
         if not self.client:
             self.logger.error("CoHere client was not set")
             return None
@@ -95,6 +101,7 @@ class CoHereProvider(LLMInterface):
         return [ f for f in response.embeddings.float ]
     
     def construct_prompt(self, prompt: str, role: str):
+        """Build a provider-specific chat message."""
         return {
             "role": role,
             "text": prompt,

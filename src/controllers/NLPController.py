@@ -10,6 +10,7 @@ class NLPController(BaseController):
     def __init__(
         self, vectordb_client, generation_client, embedding_client, template_parser
     ):
+        """Initialize this instance and its required dependencies."""
         super().__init__()
 
         self.vectordb_client = vectordb_client
@@ -18,18 +19,21 @@ class NLPController(BaseController):
         self.template_parser = template_parser
 
     def create_collection_name(self, project_id: str):
+        """Build the deterministic vector collection name for a project."""
         collection = (
             f"collection_{self.vectordb_client.default_vector_size}_{project_id}"
         )
         return collection.strip()
 
     async def reset_vector_db_collection(self, project: ProjectRecord):
+        """Delete the vector collection associated with a project."""
         collection_name = self.create_collection_name(project_id=project.project_id)
         return await self.vectordb_client.delete_collection(
             collection_name=collection_name
         )
 
     async def get_vector_db_collection_info(self, project: ProjectRecord):
+        """Return serializable information about a project vector collection."""
         collection_name = self.create_collection_name(project_id=project.project_id)
         collection_info = await self.vectordb_client.get_collection_info(
             collection_name=collection_name
@@ -48,6 +52,7 @@ class NLPController(BaseController):
     ):
 
         # step1: get collection name
+        """Embed chunks and insert their vectors into the selected store."""
         collection_name = self.create_collection_name(project_id=project.project_id)
 
         # step2: manage items
@@ -80,6 +85,7 @@ class NLPController(BaseController):
     ):
 
         # step1: get collection name
+        """Embed a query and return the closest stored documents."""
         query_vector = None
         collection_name = self.create_collection_name(project_id=project.project_id)
 
@@ -114,6 +120,7 @@ class NLPController(BaseController):
         self, project: ProjectRecord, query: str, limit: int = 10
     ):
 
+        """Retrieve relevant documents and generate a grounded answer."""
         answer, full_prompt, chat_history = None, None, None
 
         # step1: retrieve related documents

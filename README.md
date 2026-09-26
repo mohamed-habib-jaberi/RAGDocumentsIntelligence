@@ -78,6 +78,34 @@ VECTOR_DB_BACKEND="QDRANT"
 VECTOR_DB_BACKEND="PGVECTOR"
 ```
 
+`VECTOR_DB_BACKEND` est l'unique sélecteur. Les URL, chemins et paramètres
+PostgreSQL peuvent rester configurés en permanence : la factory ignore ceux du
+backend non sélectionné. Il ne faut modifier ni la factory, ni `main.py`, ni
+`celery_app.py`, ni l'entrypoint Docker pour changer de vector store.
+
+Concrètement, modifier **une seule ligne** :
+
+- lancement local : `src/.env` ;
+- lancement Docker : `docker/env/.env.app`.
+
+Puis redémarrer les processus afin qu'ils relisent cette valeur :
+
+```bash
+# Local : arrêter puis relancer ces commandes
+cd src
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python -m celery -A celery_app worker --queues=default,file_processing,data_indexing --loglevel=info
+
+# Docker
+cd docker
+docker compose up -d --force-recreate fastapi celery-worker celery-beat
+```
+
+La sélection est centralisée dans
+`src/stores/vectordb/VectorDBProviderFactory.py`. FastAPI et Celery appellent
+simplement `create()` ; la factory lit elle-même `settings.VECTOR_DB_BACKEND`
+et construit l'adaptateur approprié.
+
 Les quatre combinaisons prises en charge sont :
 
 | Persistance métier | Stockage vectoriel | Usage |
@@ -566,6 +594,10 @@ Le switch ne nécessite aucune modification du code :
 3. vérifier les variables de connexion du backend cible ;
 4. appliquer `alembic upgrade head` avant un démarrage PostgreSQL local ;
 5. redémarrer FastAPI et tous les processus Celery.
+
+Après le redémarrage, `GET /api/v1/` affiche `persistence_backend` et
+`vector_db_backend`. Cela permet de confirmer dans Postman que le nouveau flag
+a bien été chargé avant de relancer l'indexation.
 
 Pour une stack Docker déjà démarrée :
 

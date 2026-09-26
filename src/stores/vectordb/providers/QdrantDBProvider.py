@@ -18,6 +18,7 @@ class QdrantDBProvider(VectorDBInterface):
         index_threshold: int = 100,
     ):
 
+        """Initialize this instance and its required dependencies."""
         self.client = None
         self.db_path = db_path
         self.db_url = db_url
@@ -32,6 +33,7 @@ class QdrantDBProvider(VectorDBInterface):
         self.logger = logging.getLogger("uvicorn")
 
     async def connect(self):
+        """Open or validate the connection to the configured service."""
         if self.db_url:
             self.client = QdrantClient(url=self.db_url)
         elif self.db_path:
@@ -40,18 +42,22 @@ class QdrantDBProvider(VectorDBInterface):
             raise ValueError("Qdrant requires VECTOR_DB_URL or VECTOR_DB_PATH")
 
     async def disconnect(self):
+        """Close the client and release its underlying resources."""
         if self.client:
             self.client.close()
         self.client = None
 
     async def is_collection_existed(self, collection_name: str) -> bool:
+        """Return whether the requested vector collection exists."""
         return self.client.collection_exists(collection_name=collection_name)
 
     async def list_all_collections(self) -> list[str]:
+        """Return the names of all managed vector collections."""
         response = self.client.get_collections()
         return [collection.name for collection in response.collections]
 
     async def get_collection_info(self, collection_name: str) -> dict | None:
+        """Return normalized metadata for a vector collection."""
         if not await self.is_collection_existed(collection_name):
             return None
         info = self.client.get_collection(collection_name=collection_name)
@@ -65,6 +71,7 @@ class QdrantDBProvider(VectorDBInterface):
         }
 
     async def delete_collection(self, collection_name: str):
+        """Delete a vector collection and all vectors stored in it."""
         if await self.is_collection_existed(collection_name):
             self.logger.info(f"Deleting collection: {collection_name}")
             return self.client.delete_collection(collection_name=collection_name)
@@ -72,6 +79,7 @@ class QdrantDBProvider(VectorDBInterface):
     async def create_collection(
         self, collection_name: str, embedding_size: int, do_reset: bool = False
     ):
+        """Create a vector collection with the requested embedding dimension."""
         if do_reset:
             _ = await self.delete_collection(collection_name=collection_name)
 
@@ -98,6 +106,7 @@ class QdrantDBProvider(VectorDBInterface):
         record_id: str = None,
     ):
 
+        """Insert or update one vector record in a collection."""
         if not await self.is_collection_existed(collection_name):
             self.logger.error(
                 "Can not insert a record into missing collection: "
@@ -132,6 +141,7 @@ class QdrantDBProvider(VectorDBInterface):
         batch_size: int = 50,
     ):
 
+        """Insert or update a batch of vector records in a collection."""
         if metadata is None:
             metadata = [None] * len(texts)
 
@@ -170,6 +180,7 @@ class QdrantDBProvider(VectorDBInterface):
         self, collection_name: str, vector: list, limit: int = 5
     ):
 
+        """Return the documents nearest to the supplied query vector."""
         results = self.client.search(
             collection_name=collection_name, query_vector=vector, limit=limit
         )
