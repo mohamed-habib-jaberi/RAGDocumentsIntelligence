@@ -1,3 +1,5 @@
+"""Coordinate the NLPController application workflow."""
+
 from .BaseController import BaseController
 from models.db_schemes import Project, DataChunk
 from stores.llm.LLMEnums import DocumentTypeEnum
@@ -6,8 +8,10 @@ import json
 
 class NLPController(BaseController):
 
+    """Coordinate the NLP application workflow."""
     def __init__(self, vectordb_client, generation_client, 
                  embedding_client, template_parser):
+        """Initialize the services used for embeddings, retrieval, and RAG generation."""
         super().__init__()
 
         self.vectordb_client = vectordb_client
@@ -16,13 +20,16 @@ class NLPController(BaseController):
         self.template_parser = template_parser
 
     def create_collection_name(self, project_id: str):
+        """Build the deterministic vector-collection name associated with a project."""
         return f"collection_{project_id}".strip()
     
     def reset_vector_db_collection(self, project: Project):
+        """Delete the vector collection associated with a project."""
         collection_name = self.create_collection_name(project_id=project.project_id)
         return self.vectordb_client.delete_collection(collection_name=collection_name)
     
     def get_vector_db_collection_info(self, project: Project):
+        """Return serializable information about a project's vector collection."""
         collection_name = self.create_collection_name(project_id=project.project_id)
         collection_info = self.vectordb_client.get_collection_info(collection_name=collection_name)
 
@@ -35,6 +42,7 @@ class NLPController(BaseController):
                                    do_reset: bool = False):
         
         # step1: get collection name
+        """Embed document chunks and insert their vectors into the selected store."""
         collection_name = self.create_collection_name(project_id=project.project_id)
 
         # step2: manage items
@@ -67,6 +75,7 @@ class NLPController(BaseController):
     def search_vector_db_collection(self, project: Project, text: str, limit: int = 10):
 
         # step1: get collection name
+        """Embed a query and retrieve the closest stored document chunks."""
         collection_name = self.create_collection_name(project_id=project.project_id)
 
         # step2: get text embedding vector
@@ -90,6 +99,7 @@ class NLPController(BaseController):
     
     def answer_rag_question(self, project: Project, query: str, limit: int = 10):
         
+        """Retrieve relevant chunks and ask the language model for a grounded answer."""
         answer, full_prompt, chat_history = None, None, None
 
         # step1: retrieve related documents
@@ -134,4 +144,3 @@ class NLPController(BaseController):
         )
 
         return answer, full_prompt, chat_history
-

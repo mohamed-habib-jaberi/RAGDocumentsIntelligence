@@ -1,3 +1,5 @@
+"""Expose the HTTP endpoints implemented by the data router."""
+
 from fastapi import FastAPI, APIRouter, Depends, UploadFile, status, Request
 from fastapi.responses import JSONResponse
 import os
@@ -25,6 +27,7 @@ async def upload_data(request: Request, project_id: str, file: UploadFile,
                       app_settings: Settings = Depends(get_settings)):
         
     
+    """Validate and store an uploaded document for the requested project."""
     project_model = await ProjectModel.create_instance(
         db_client=request.app.db_client
     )
@@ -91,6 +94,7 @@ async def upload_data(request: Request, project_id: str, file: UploadFile,
 @data_router.post("/process/{project_id}")
 async def process_endpoint(request: Request, project_id: str, process_request: ProcessRequest):
 
+    """Queue document extraction and chunk persistence for a project."""
     chunk_size = process_request.chunk_size
     overlap_size = process_request.overlap_size
     do_reset = process_request.do_reset
