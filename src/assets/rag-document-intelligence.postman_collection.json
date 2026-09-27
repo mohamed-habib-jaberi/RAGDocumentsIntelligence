@@ -2,7 +2,7 @@
   "info": {
     "name": "RAG Document Intelligence — Complete API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Postman collection for branch 13c. Select MongoDB/PostgreSQL and Qdrant/PGVector before startup. For a normal end-to-end test, upload a file and run only the recommended process-and-index workflow."
+    "description": "Postman collection for branch 13c through Nginx. Select MongoDB/PostgreSQL and Qdrant/PGVector before startup. For a normal end-to-end test, upload a file and run only the recommended process-and-index workflow."
   },
   "item": [
     {
@@ -312,7 +312,7 @@
   "variable": [
     {
       "key": "api",
-      "value": "http://127.0.0.1:8000",
+      "value": "http://localhost",
       "type": "string"
     },
     {
