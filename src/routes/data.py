@@ -90,7 +90,11 @@ async def upload_data(request: Request, project_id: int, file: UploadFile,
     return JSONResponse(
             content={
                 "signal": ResponseSignal.FILE_UPLOAD_SUCCESS.value,
-                "file_id": str(asset_record.asset_id),
+                # The processing endpoint resolves a file by its generated
+                # storage name. Expose the SQL identifier separately so that
+                # clients do not accidentally send it as ``file_id``.
+                "file_id": asset_record.asset_name,
+                "asset_id": str(asset_record.asset_id),
             }
         )
 
