@@ -1,0 +1,15 @@
+.git
+.gitignore
+**/.DS_Store
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.venv/
+
+# Runtime configuration and secrets must be injected with Compose env_file.
+src/.env
+docker/.env
+docker/env/.env*
+
+# Keep the committed environment templates available as documentation.
+!docker/env/.env.example.*
