@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     GENERATION_DAFAULT_TEMPERATURE: float = 0.1
 
     VECTOR_DB_BACKEND: str = "QDRANT"
+    VECTOR_DB_URL: str | None = None
     VECTOR_DB_PATH: str = "qdrant_db"
     VECTOR_DB_DISTANCE_METHOD: str = "cosine"
 

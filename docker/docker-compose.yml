@@ -13,7 +13,7 @@ services:
       - backend
     restart: always
     depends_on:
-      pgvector:
+      mongodb:
         condition: service_healthy
     env_file:
       - ./env/.env.app
@@ -34,7 +34,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      pgvector:
+      mongodb:
         condition: service_healthy
     env_file:
       - ./env/.env.app
@@ -94,21 +94,19 @@ services:
     restart: always
 
 
-  # PostgreSQL (pgvector)
-  pgvector:
-    image: pgvector/pgvector:0.8.0-pg17
-    container_name: pgvector
+  # MongoDB document persistence
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mongodb
     ports:
-      - "5400:5432"
+      - "27007:27017"
     volumes:
-      - 'pgvector:/var/lib/postgresql/data'
-    env_file:
-      - ./env/.env.postgres
+      - mongodb_data:/data/db
     networks:
       - backend
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -182,20 +180,6 @@ services:
       - backend
     restart: always
 
-  # PostgreSQL Exporter for Postgres metrics
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.17.1
-    container_name: postgres-exporter
-    ports:
-      - "9187:9187"
-    env_file:
-      - ./env/.env.postgres-exporter
-    depends_on:
-      - pgvector
-    networks:
-      - backend
-    restart: always
-
   # RabbitMQ (Message Broker)
   rabbitmq:
     image: rabbitmq:4.1.2-management-alpine
@@ -241,7 +225,7 @@ networks:
 
 volumes:
   fastapi_data:
-  pgvector:
+  mongodb_data:
   qdrant_data:
   prometheus_data:
   grafana_data:

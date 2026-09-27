@@ -1,0 +1,13 @@
+.git
+.gitignore
+**/.DS_Store
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.venv/
+
+# Runtime configuration and secrets are injected with Compose env_file.
+src/.env
+docker/.env
+docker/env/.env*
+!docker/env/.env.example.*
