@@ -62,8 +62,22 @@
                 "{{project_id}}"
               ]
             },
-            "description": "Select a local TXT or PDF file before sending the request."
+            "description": "Select a local TXT or PDF file. The test script stores the returned file_id for the processing requests."
           },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.file_id) pm.collectionVariables.set('file_id', response.file_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "response": []
         },
         {
@@ -78,7 +92,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"file_id\": \"uploaded-file-id.pdf\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
+              "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -114,7 +128,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"file_id\": \"uploaded-file-id.pdf\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 0\n}",
+              "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -283,12 +297,17 @@
   "variable": [
     {
       "key": "api",
-      "value": "http://127.0.0.1:8000",
+      "value": "http://localhost",
       "type": "string"
     },
     {
       "key": "project_id",
       "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "file_id",
+      "value": "",
       "type": "string"
     }
   ]
