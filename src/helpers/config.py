@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     VECTOR_DB_BACKEND_LITERAL: list[str] | None = None
     VECTOR_DB_BACKEND: str = "PGVECTOR"
+    VECTOR_DB_URL: str | None = None
     VECTOR_DB_PATH: str = "qdrant_db"
     VECTOR_DB_DISTANCE_METHOD: str = "cosine"
     VECTOR_DB_PGVEC_INDEX_THRESHOLD: int = 100
