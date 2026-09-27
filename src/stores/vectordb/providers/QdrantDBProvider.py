@@ -32,6 +32,8 @@ class QdrantDBProvider(VectorDBInterface):
 
     async def disconnect(self):
         """Close the vector database client and release its resources."""
+        if self.client:
+            self.client.close()
         self.client = None
 
     async def is_collection_existed(self, collection_name: str) -> bool:
@@ -42,13 +44,15 @@ class QdrantDBProvider(VectorDBInterface):
         """Return the names of all vector collections managed by the backend."""
         return self.client.get_collections()
 
-    def get_collection_info(self, collection_name: str) -> dict:
+    async def get_collection_info(self, collection_name: str) -> dict:
         """Return normalized metadata and record counts for a vector collection."""
+        if not await self.is_collection_existed(collection_name):
+            return None
         return self.client.get_collection(collection_name=collection_name)
 
     async def delete_collection(self, collection_name: str):
         """Delete a vector collection and all embeddings stored in it."""
-        if self.is_collection_existed(collection_name):
+        if await self.is_collection_existed(collection_name):
             self.logger.info(f"Deleting collection: {collection_name}")
             return self.client.delete_collection(collection_name=collection_name)
 
@@ -57,9 +61,9 @@ class QdrantDBProvider(VectorDBInterface):
                                 do_reset: bool = False):
         """Create a vector collection with the requested embedding dimension."""
         if do_reset:
-            _ = self.delete_collection(collection_name=collection_name)
+            _ = await self.delete_collection(collection_name=collection_name)
 
-        if not self.is_collection_existed(collection_name):
+        if not await self.is_collection_existed(collection_name):
             self.logger.info(f"Creating new Qdrant collection: {collection_name}")
 
             _ = self.client.create_collection(
@@ -79,7 +83,7 @@ class QdrantDBProvider(VectorDBInterface):
                          record_id: str = None):
 
         """Insert or update one embedding record in a vector collection."""
-        if not self.is_collection_existed(collection_name):
+        if not await self.is_collection_existed(collection_name):
             self.logger.error(f"Can not insert new record to non-existed collection: {collection_name}")
             return False
 
@@ -88,7 +92,7 @@ class QdrantDBProvider(VectorDBInterface):
                 collection_name=collection_name,
                 records=[
                     models.Record(
-                        id=[record_id],
+                        id=record_id,
                         vector=vector,
                         payload={
                             "text": text, "metadata": metadata
