@@ -35,7 +35,7 @@ class BaseController:
             self.database_dir, db_name
         )
 
-        if not os.path.exists(database_path):
-            os.makedirs(database_path)
+        # Multiple Uvicorn workers can initialize this path concurrently.
+        os.makedirs(database_path, exist_ok=True)
 
         return database_path
