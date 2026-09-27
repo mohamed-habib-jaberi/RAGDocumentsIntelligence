@@ -35,7 +35,7 @@ class BaseController:
             self.database_dir, db_name
         )
 
-        if not os.path.exists(database_path):
-            os.makedirs(database_path)
+        # Safe when multiple application workers initialize the same path.
+        os.makedirs(database_path, exist_ok=True)
 
         return database_path
