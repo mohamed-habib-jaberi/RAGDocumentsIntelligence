@@ -1,18 +1,23 @@
 {
   "info": {
     "name": "RAG Document Intelligence — Stage 17",
-    "description": "Requests available at this tutorial stage. Set the collection variables before sending requests.",
+    "description": "Stage 17 workflow through Nginx. Upload captures file_id automatically; use the combined process-and-index request for the recommended Celery workflow.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
-      "key": "baseUrl",
-      "value": "http://localhost:8000",
+      "key": "api",
+      "value": "http://localhost",
       "type": "string"
     },
     {
-      "key": "projectId",
+      "key": "project_id",
       "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "file_id",
+      "value": "",
       "type": "string"
     }
   ],
@@ -23,9 +28,9 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/",
+          "raw": "{{api}}/api/v1/",
           "host": [
-            "{{baseUrl}}"
+            "{{api}}"
           ],
           "path": [
             "api",
@@ -53,20 +58,34 @@
           ]
         },
         "url": {
-          "raw": "{{baseUrl}}/api/v1/data/upload/{{projectId}}",
+          "raw": "{{api}}/api/v1/data/upload/{{project_id}}",
           "host": [
-            "{{baseUrl}}"
+            "{{api}}"
           ],
           "path": [
             "api",
             "v1",
             "data",
             "upload",
-            "{{projectId}}"
+            "{{project_id}}"
           ]
         },
-        "description": "Uploads a document for the selected project."
-      }
+        "description": "Uploads a document and returns the generated file_id expected by the processing tasks."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const response = pm.response.json();",
+              "    if (response.file_id) pm.collectionVariables.set('file_id', response.file_id);",
+              "}"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Queue document processing",
@@ -80,7 +99,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 1\n}",
+          "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 1\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -88,16 +107,16 @@
           }
         },
         "url": {
-          "raw": "{{baseUrl}}/api/v1/data/process/{{projectId}}",
+          "raw": "{{api}}/api/v1/data/process/{{project_id}}",
           "host": [
-            "{{baseUrl}}"
+            "{{api}}"
           ],
           "path": [
             "api",
             "v1",
             "data",
             "process",
-            "{{projectId}}"
+            "{{project_id}}"
           ]
         },
         "description": "Queues the project document-processing task."
@@ -107,18 +126,32 @@
       "name": "Process and index workflow",
       "request": {
         "method": "POST",
-        "header": [],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file_id\": \"{{file_id}}\",\n  \"chunk_size\": 500,\n  \"overlap_size\": 50,\n  \"do_reset\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
-          "raw": "{{baseUrl}}/api/v1/data/process-and-push/{{projectId}}",
+          "raw": "{{api}}/api/v1/data/process-and-push/{{project_id}}",
           "host": [
-            "{{baseUrl}}"
+            "{{api}}"
           ],
           "path": [
             "api",
             "v1",
             "data",
             "process-and-push",
-            "{{projectId}}"
+            "{{project_id}}"
           ]
         },
         "description": "Queues the Celery workflow that processes and indexes a project in one operation."
@@ -144,9 +177,9 @@
           }
         },
         "url": {
-          "raw": "{{baseUrl}}/api/v1/nlp/index/push/{{projectId}}",
+          "raw": "{{api}}/api/v1/nlp/index/push/{{project_id}}",
           "host": [
-            "{{baseUrl}}"
+            "{{api}}"
           ],
           "path": [
             "api",
@@ -154,7 +187,7 @@
             "nlp",
             "index",
             "push",
-            "{{projectId}}"
+            "{{project_id}}"
           ]
         },
         "description": "Creates vector embeddings for the processed project chunks."
@@ -166,9 +199,9 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/nlp/index/info/{{projectId}}",
+          "raw": "{{api}}/api/v1/nlp/index/info/{{project_id}}",
           "host": [
-            "{{baseUrl}}"
+            "{{api}}"
           ],
           "path": [
             "api",
@@ -176,7 +209,7 @@
             "nlp",
             "index",
             "info",
-            "{{projectId}}"
+            "{{project_id}}"
           ]
         },
         "description": "Returns metadata about the project vector index."
@@ -202,9 +235,9 @@
           }
         },
         "url": {
-          "raw": "{{baseUrl}}/api/v1/nlp/index/search/{{projectId}}",
+          "raw": "{{api}}/api/v1/nlp/index/search/{{project_id}}",
           "host": [
-            "{{baseUrl}}"
+            "{{api}}"
           ],
           "path": [
             "api",
@@ -212,7 +245,7 @@
             "nlp",
             "index",
             "search",
-            "{{projectId}}"
+            "{{project_id}}"
           ]
         },
         "description": "Searches semantically similar document chunks."
@@ -238,9 +271,9 @@
           }
         },
         "url": {
-          "raw": "{{baseUrl}}/api/v1/nlp/index/answer/{{projectId}}",
+          "raw": "{{api}}/api/v1/nlp/index/answer/{{project_id}}",
           "host": [
-            "{{baseUrl}}"
+            "{{api}}"
           ],
           "path": [
             "api",
@@ -248,7 +281,7 @@
             "nlp",
             "index",
             "answer",
-            "{{projectId}}"
+            "{{project_id}}"
           ]
         },
         "description": "Generates an answer grounded in the retrieved document context."
