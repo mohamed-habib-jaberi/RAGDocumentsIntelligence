@@ -82,6 +82,7 @@ class QdrantDBProvider(VectorDBInterface):
                 collection_name=collection_name,
                 records=[
                     models.Record(
+                        id=record_id,
                         vector=vector,
                         payload={
                             "text": text, "metadata": metadata
