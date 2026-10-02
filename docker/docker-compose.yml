@@ -169,10 +169,22 @@ services:
       - backend
     restart: always
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # Use the password injected by env/.env.redis when checking readiness.
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping"]
       timeout: 10s
       retries: 5
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-me}"]
+    # Double dollars defer variable expansion to the Redis container. Compose's
+    # service env_file is therefore the single source of truth for Redis config.
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server
+        --appendonly "$${REDIS_APPENDONLY:-yes}"
+        --requirepass "$$REDIS_PASSWORD"
+        --maxmemory "$${REDIS_MAXMEMORY:-512mb}"
+        --maxmemory-policy "$${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
+        --protected-mode "$${REDIS_PROTECTED_MODE:-yes}"
 
 networks:
   backend:
