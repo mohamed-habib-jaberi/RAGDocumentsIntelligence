@@ -6,6 +6,9 @@ SHELL := /bin/sh
 # make PYTHON=.venv/bin/python api
 CONDA_ENV ?= rag
 PYTHON ?= conda run --no-capture-output -n $(CONDA_ENV) python
+# Prevent an activated pyenv/virtualenv shell from injecting incompatible
+# stdlib or site-packages paths into the selected project interpreter.
+PYTHON_CMD := env -u PYTHONHOME -u PYTHONPATH PYTHONNOUSERSITE=1 $(PYTHON)
 SRC_DIR := src
 ALEMBIC_DIR := $(SRC_DIR)/models/db_schemes/minirag
 COMPOSE := docker compose --project-directory docker -f docker/docker-compose.yml
@@ -16,11 +19,12 @@ FLOWER_PORT ?= 5555
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install env-local env-docker infra infra-logs migrate api worker beat flower check docker-up docker-logs docker-down docker-reset
+.PHONY: help check-python install env-local env-docker infra infra-logs migrate api worker beat flower check docker-up docker-logs docker-down docker-reset
 
 help:
 	@printf '%s\n' \
 	  'Run every target from the repository root (default Conda env: rag):' \
+	  '  make check-python  Show and validate the selected Python interpreter' \
 	  '  make install       Install and verify Python dependencies' \
 	  '  make env-local     Create src/.env if it does not exist' \
 	  '  make env-docker    Create Docker .env files if missing' \
@@ -36,9 +40,13 @@ help:
 	  '  make docker-down   Stop the Docker stack' \
 	  '  make docker-reset  Stop the stack and delete its volumes'
 
-install:
-	cd $(SRC_DIR) && $(PYTHON) -m pip install -r requirements.txt
-	cd $(SRC_DIR) && $(PYTHON) -m pip check
+check-python:
+	@cd $(SRC_DIR) && $(PYTHON_CMD) -c \
+		'import sys, lzma; print("Python:", sys.executable); print("lzma: OK")'
+
+install: check-python
+	cd $(SRC_DIR) && $(PYTHON_CMD) -m pip install -r requirements.txt
+	cd $(SRC_DIR) && $(PYTHON_CMD) -m pip check
 
 env-local:
 	@test -f $(SRC_DIR)/.env || cp $(SRC_DIR)/.env.example $(SRC_DIR)/.env
@@ -57,36 +65,36 @@ infra:
 infra-logs:
 	$(COMPOSE) logs -f rabbitmq redis pgvector
 
-migrate:
+migrate: check-python
 	@test -f $(ALEMBIC_DIR)/alembic.ini || \
 		(echo 'Missing $(ALEMBIC_DIR)/alembic.ini; follow README section 6.'; exit 1)
-	cd $(ALEMBIC_DIR) && $(PYTHON) -m alembic upgrade head
+	cd $(ALEMBIC_DIR) && $(PYTHON_CMD) -m alembic upgrade head
 
-api:
-	cd $(SRC_DIR) && $(PYTHON) -m uvicorn main:app \
+api: check-python
+	cd $(SRC_DIR) && $(PYTHON_CMD) -m uvicorn main:app \
 		--reload --host 0.0.0.0 --port $(API_PORT)
 
-worker:
-	cd $(SRC_DIR) && $(PYTHON) -m celery \
+worker: check-python
+	cd $(SRC_DIR) && $(PYTHON_CMD) -m celery \
 		-A $(CELERY_APP) worker \
 		--loglevel=INFO \
 		--queues=$(CELERY_QUEUES) \
 		--pool=solo \
 		--concurrency=1
 
-beat:
-	cd $(SRC_DIR) && $(PYTHON) -m celery \
+beat: check-python
+	cd $(SRC_DIR) && $(PYTHON_CMD) -m celery \
 		-A $(CELERY_APP) beat --loglevel=INFO
 
-flower:
-	cd $(SRC_DIR) && $(PYTHON) -m celery \
+flower: check-python
+	cd $(SRC_DIR) && $(PYTHON_CMD) -m celery \
 		-A $(CELERY_APP) flower \
 		--conf=flowerconfig.py \
 		--port=$(FLOWER_PORT)
 
-check:
-	cd $(SRC_DIR) && PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m compileall -q .
-	cd $(SRC_DIR) && $(PYTHON) -m pip check
+check: check-python
+	cd $(SRC_DIR) && PYTHONDONTWRITEBYTECODE=1 $(PYTHON_CMD) -m compileall -q .
+	cd $(SRC_DIR) && $(PYTHON_CMD) -m pip check
 	$(COMPOSE) config --quiet
 
 docker-up: env-docker

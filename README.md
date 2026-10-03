@@ -44,7 +44,8 @@ Every `make` command below must be run from the **repository root**
 (`RAGDocumentsIntelligence/`). The Makefile enters `src/` or `docker/`
 automatically. By default it runs Python through the Conda environment named
 `rag`, independently of whether the current shell displays `(base)`, `(.venv)`,
-or both.
+or both. It also removes inherited `PYTHONPATH` and `PYTHONHOME` values so
+packages from a pyenv installation cannot leak into the selected environment.
 
 To select another Conda environment or a virtualenv interpreter explicitly:
 
@@ -54,6 +55,7 @@ make PYTHON=.venv/bin/python api
 ```
 
 ```bash
+make check-python
 make help
 make env-local
 make env-docker
@@ -71,6 +73,10 @@ make worker
 make beat
 make flower
 ```
+
+`make check-python` must report the `rag` interpreter and `lzma: OK`. If your
+terminal is already inside `src/`, the forwarding Makefile accepts the same
+command: `make check-python`.
 
 For an entirely containerized environment, use:
 
