@@ -1,12 +1,8 @@
 """Expose the HTTP endpoints implemented by the base router."""
 
-from fastapi import FastAPI, APIRouter, Depends
-import os
+from fastapi import APIRouter, Depends
 from helpers.config import get_settings, Settings
-from time import sleep
-import logging
-
-logger = logging.getLogger('uvicorn.error')
+from tasks.mail_service import send_email_reports
 
 base_router = APIRouter(
     prefix="/api/v1",
@@ -23,4 +19,15 @@ async def welcome(app_settings: Settings = Depends(get_settings)):
     return {
         "app_name": app_name,
         "app_version": app_version,
+    }
+
+
+@base_router.get("/send_reports")
+async def send_reports():
+    """Queue the report-email simulation and return without blocking FastAPI."""
+    task = send_email_reports.delay(mail_wait_seconds=3)
+
+    return {
+        "success": True,
+        "task_id": task.id,
     }

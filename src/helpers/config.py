@@ -100,7 +100,9 @@ class Settings(BaseSettings):
             self.EMBEDDING_MODEL_SIZE = self.CLOUD_EMBEDDING_MODEL_SIZE
         return self
 
-    model_config = SettingsConfigDict(env_file=".env")
+    # Ignore settings owned by adjacent feature branches so switching branches
+    # does not make an existing local .env prevent application startup.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 def get_settings():

@@ -37,10 +37,13 @@ export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
 
 ```bash
 cd src
-pip install -r requirements.txt
+"$CONDA_PREFIX/bin/python" -m pip install -r requirements.txt
+"$CONDA_PREFIX/bin/python" -m pip check
 ```
 
 Versions are pinned so every developer uses compatible dependencies. FastAPI defines routes, Uvicorn runs the application, and `python-multipart` supports file uploads.
+Using the interpreter under `CONDA_PREFIX` prevents pyenv or a global Python
+installation from receiving the project dependencies by mistake.
 
 ## 5. Configure the Environment
 
@@ -86,7 +89,7 @@ factory, and registers FastAPI routers. The base route is versioned under
 ## 8. Start the FastAPI Application
 
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+"$CONDA_PREFIX/bin/python" -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Verify the base endpoint:
@@ -222,11 +225,27 @@ Start the worker separately after the broker and database services are ready:
 
 ```bash
 cd src
-celery -A celery_app.celery_app worker --loglevel=INFO --queues=file_processing
+"$CONDA_PREFIX/bin/python" -m celery \
+  -A celery_app.celery_app worker \
+  --loglevel=INFO \
+  --queues=default,file_processing,data_indexing,mail_service_queue \
+  --pool=solo \
+  --concurrency=1
 ```
 
 The task worker uses the same `LLM_MODE` configuration as the API, so it can
 process embeddings with Ollama, Colab/ngrok, or the cloud profile.
+
+On macOS, `--pool=solo` avoids multiprocessing issues. Confirm that the active
+Conda interpreter provides the standard `lzma` module before starting Celery:
+
+```bash
+"$CONDA_PREFIX/bin/python" -c "import sys, lzma; print(sys.executable)"
+```
+
+The `GET /api/v1/send_reports` endpoint submits the report simulation to
+`mail_service_queue` and immediately returns its Celery `task_id`; the worker
+continues the work without blocking FastAPI.
 
 ## 23. Celery Workflows, Beat, and Flower
 

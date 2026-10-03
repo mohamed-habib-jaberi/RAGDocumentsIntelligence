@@ -54,7 +54,7 @@ async def startup_span():
 
 async def shutdown_span():
     """Release application services and database clients during shutdown."""
-    app.db_engine.dispose()
+    await app.db_engine.dispose()
     await app.vectordb_client.disconnect()
 
 app.on_event("startup")(startup_span)

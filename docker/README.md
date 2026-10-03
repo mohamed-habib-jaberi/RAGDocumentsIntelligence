@@ -12,6 +12,8 @@ This directory contains the Docker setup for RAG Document Intelligence, includin
 - **Prometheus**: Metrics collection
 - **Grafana**: Visualization dashboard for metrics
 - **Node-Exporter**: System metrics collection
+- **RabbitMQ**: Message broker used by Celery workers
+- **Redis**: Celery result backend and cache
 
 ## Setup Instructions
 
@@ -26,6 +28,8 @@ cp .env.example.app .env.app
 cp .env.example.postgres .env.postgres
 cp .env.example.grafana .env.grafana
 cp .env.example.postgres-exporter .env.postgres-exporter
+cp .env.example.rabbitmq .env.rabbitmq
+cp .env.example.redis .env.redis
 
 # Setup the Alembic configuration for the FastAPI application
 cd ..
@@ -37,6 +41,11 @@ Edit `docker/env/.env.app` after copying it. Select either `LLM_MODE="CLOUD"`
 with a local cloud API key, or `LLM_MODE="OLLAMA"` with an Ollama endpoint. For
 Ollama on macOS, use `http://host.docker.internal:11434/v1`; for Colab, use the
 ngrok HTTPS URL followed by `/v1`.
+
+Keep `RABBITMQ_DEFAULT_USER`, `RABBITMQ_DEFAULT_PASS`, and
+`RABBITMQ_DEFAULT_VHOST` consistent with `CELERY_BROKER_URL` in `.env.app`.
+Likewise, `REDIS_PASSWORD` must match the password in
+`CELERY_RESULT_BACKEND`. Local `.env.*` files are ignored by Git.
 
 ### 2. Start the services
 
@@ -70,12 +79,14 @@ docker compose down -v --remove-orphans
 
 ### 3. Access the services
 
-- FastAPI Application: http://localhost:8000
-- FastAPI Documentation: http://localhost:8000/docs
+- FastAPI Application: http://localhost:5001
+- FastAPI Documentation: http://localhost:5001/docs
 - Nginx (serving FastAPI): http://localhost
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000
 - Qdrant UI: http://localhost:6333/dashboard
+- RabbitMQ Management: http://localhost:15672
+- Flower: http://localhost:5555
 
 ## Volume Management
 

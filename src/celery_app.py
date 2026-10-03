@@ -50,7 +50,7 @@ async def get_setup_utils():
 
 # Create Celery application instance
 celery_app = Celery(
-    "minirag",
+    "rag_documents_intelligence",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
     include=[
@@ -58,6 +58,7 @@ celery_app = Celery(
         "tasks.data_indexing",
         "tasks.process_workflow",
         "tasks.maintenance",
+        "tasks.mail_service",
     ]
 )
 
@@ -76,7 +77,7 @@ celery_app.conf.update(
     task_time_limit=settings.CELERY_TASK_TIME_LIMIT,
 
     # Result backend - Store results for status tracking
-    task_ignore_resul=False,
+    task_ignore_result=False,
     result_expires=3600,
 
     # Worker settings
@@ -93,6 +94,7 @@ celery_app.conf.update(
         "tasks.data_indexing.index_data_content": {"queue": "data_indexing"},
         "tasks.process_workflow.process_and_push_workflow": {"queue": "file_processing"},
         "tasks.maintenance.clean_celery_executions_table": {"queue": "default"},
+        "tasks.mail_service.send_email_reports": {"queue": "mail_service_queue"},
     },
 
     beat_schedule={
