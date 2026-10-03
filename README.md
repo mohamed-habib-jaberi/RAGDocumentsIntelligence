@@ -82,6 +82,10 @@ make docker-logs
 Stop it with `make docker-down`. Use `make docker-reset` only when all Docker
 volumes and their development data should be deleted.
 
+If your terminal is already inside `src/`, the included forwarding Makefile
+accepts the same commands, so `make api`, `make worker`, and `make flower` work
+without returning to the repository root.
+
 ## 4. Enter the Application Directory and Install Dependencies
 
 Run from: **repository root** (`RAGDocumentsIntelligence/`).
