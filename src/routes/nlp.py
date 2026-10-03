@@ -19,10 +19,21 @@ nlp_router = APIRouter(
     tags=["api_v1", "nlp"],
 )
 
-@nlp_router.post("/index/push/{project_id}")
+@nlp_router.post(
+    "/index/push/{project_id}",
+    summary="Generate embeddings and populate the vector index",
+    description=(
+        "Queues a Celery task that loads the project's persisted text chunks "
+        "from PostgreSQL, sends their text to the configured embedding model, "
+        "and stores the resulting numerical vectors and chunk references in "
+        "Qdrant or PGVector. The documents must be processed into chunks first."
+    ),
+)
 async def index_project(request: Request, project_id: int, push_request: PushRequest):
 
-    """Index the persisted chunks of a project in the active vector database."""
+    """Queue the chunks-to-embeddings stage of the ingestion pipeline."""
+    # Stage 2: transform each stored chunk into an embedding and persist it in
+    # the selected vector backend so semantic search can compare query vectors.
     task = index_data_content.delay(
         project_id=project_id,
         do_reset=push_request.do_reset

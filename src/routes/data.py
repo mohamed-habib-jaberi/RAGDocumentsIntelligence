@@ -98,14 +98,27 @@ async def upload_data(request: Request, project_id: int, file: UploadFile,
             }
         )
 
-@data_router.post("/process/{project_id}")
+@data_router.post(
+    "/process/{project_id}",
+    summary="Split uploaded documents into text chunks",
+    description=(
+        "Queues a Celery task that reads one uploaded file, or every file in "
+        "the project when file_id is omitted. The task extracts text, splits "
+        "it into overlapping chunks, and persists those chunks in PostgreSQL. "
+        "This endpoint does not generate embeddings and does not write to the "
+        "vector database; call /api/v1/nlp/index/push/{project_id} afterward."
+    ),
+)
 async def process_endpoint(request: Request, project_id: int, process_request: ProcessRequest):
 
-    """Queue document extraction and chunk persistence for a project."""
+    """Queue the document-to-chunks stage of the ingestion pipeline."""
     chunk_size = process_request.chunk_size
     overlap_size = process_request.overlap_size
     do_reset = process_request.do_reset
 
+    # Stage 1: the worker converts the stored document into searchable text
+    # units and saves them in the relational persistence database. Embedding
+    # generation deliberately belongs to the separate indexing stage.
     task = process_project_files.delay(
         project_id=project_id,
         file_id=process_request.file_id,
@@ -121,7 +134,15 @@ async def process_endpoint(request: Request, project_id: int, process_request: P
         }
     )
 
-@data_router.post("/process-and-push/{project_id}")
+@data_router.post(
+    "/process-and-push/{project_id}",
+    summary="Process documents and build their vector index",
+    description=(
+        "Queues the complete Celery workflow: extract document text, create "
+        "and persist chunks, generate an embedding for each chunk, then store "
+        "the vectors in the configured Qdrant or PGVector backend."
+    ),
+)
 async def process_and_push_endpoint(request: Request, project_id: int, process_request: ProcessRequest):
 
     """Queue the complete document-processing and vector-indexing workflow."""
@@ -129,6 +150,8 @@ async def process_and_push_endpoint(request: Request, project_id: int, process_r
     overlap_size = process_request.overlap_size
     do_reset = process_request.do_reset
 
+    # Combined pipeline: Stage 1 creates relational chunks; Stage 2 converts
+    # those chunks into embeddings and writes the vector index.
     workflow_task = process_and_push_workflow.delay(
         project_id=project_id,
         file_id=process_request.file_id,

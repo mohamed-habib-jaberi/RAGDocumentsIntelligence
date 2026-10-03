@@ -375,6 +375,20 @@ Docker access, or `http://localhost` for Nginx. Then run the requests in order.
 
 Stage 10 adds the `/api/v1/nlp` router. It indexes persisted chunks in Qdrant, retrieves semantically related chunks, and uses locale-specific templates to build a prompt for the configured generation provider.
 
+The ingestion stages have separate responsibilities:
+
+| Endpoint | Input | Responsibility | Output storage |
+|---|---|---|---|
+| `POST /api/v1/data/upload/{project_id}` | Original TXT or PDF | Validate and store the original file | Shared file storage and PostgreSQL asset record |
+| `POST /api/v1/data/process/{project_id}` | Uploaded file | Extract text, divide it into overlapping chunks, and persist their metadata | PostgreSQL `chunks` table |
+| `POST /api/v1/nlp/index/push/{project_id}` | Persisted chunks | Generate numerical embeddings and build the semantic-search index | Qdrant or PGVector |
+| `POST /api/v1/data/process-and-push/{project_id}` | Uploaded file | Execute processing and vector indexing sequentially | PostgreSQL plus Qdrant or PGVector |
+
+`/process` does not call the embedding model. `/index/push` does not parse the
+original PDF or TXT file: it requires chunks created by `/process`. The combined
+`/process-and-push` endpoint is the recommended option when both stages should
+run as one background workflow.
+
 The available operations are:
 
 - `POST /api/v1/nlp/index/push/{project_id}`: create or reset a project vector collection and index its chunks;

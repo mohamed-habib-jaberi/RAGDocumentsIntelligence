@@ -119,7 +119,7 @@
             "{{project_id}}"
           ]
         },
-        "description": "Queues the project document-processing task."
+        "description": "Stage 1 — Document processing. Reads the uploaded TXT or PDF file, extracts its text, splits the text into overlapping chunks using chunk_size and overlap_size, and persists those chunks in PostgreSQL. This request does not generate embeddings and does not populate Qdrant or PGVector. Use the file_id returned by Upload document and the same project_id."
       }
     },
     {
@@ -154,7 +154,7 @@
             "{{project_id}}"
           ]
         },
-        "description": "Queues the Celery workflow that processes and indexes a project in one operation."
+        "description": "Complete ingestion workflow. First it extracts text and persists document chunks in PostgreSQL; then it generates an embedding for every chunk and stores the vectors in the configured Qdrant or PGVector backend. Use this endpoint when both stages should run automatically in sequence."
       }
     },
     {
@@ -190,7 +190,7 @@
             "{{project_id}}"
           ]
         },
-        "description": "Creates vector embeddings for the processed project chunks."
+        "description": "Stage 2 — Vector indexing. Loads chunks previously created by /api/v1/data/process/{project_id}, sends their text to the configured embedding model, and stores the resulting numerical vectors plus chunk references in Qdrant or PGVector. It does not read or split the original document, so processing must complete successfully first."
       }
     },
     {
