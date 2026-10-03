@@ -21,7 +21,9 @@ services:
     volumes:
       - pgvector_data:/var/lib/postgresql/data
     environment:
+      - POSTGRES_USER=${POSTGRES_USERNAME}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_MAIN_DATABASE}
     networks:
       - backend
     restart: always
