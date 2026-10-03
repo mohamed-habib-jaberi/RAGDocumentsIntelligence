@@ -37,6 +37,43 @@ Run from: **any directory**, after activating `rag`.
 export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
 ```
 
+## Team Command Interface
+
+The repository `Makefile` is the recommended interface for local development.
+Every `make` command below must be run from the **repository root**
+(`RAGDocumentsIntelligence/`). The Makefile enters `src/` or `docker/`
+automatically and selects the interpreter from the active Conda or virtualenv
+environment.
+
+```bash
+make help
+make env-local
+make env-docker
+make install
+make infra
+make migrate
+```
+
+Run each long-running application in a separate terminal, always from the
+repository root:
+
+```bash
+make api
+make worker
+make beat
+make flower
+```
+
+For an entirely containerized environment, use:
+
+```bash
+make docker-up
+make docker-logs
+```
+
+Stop it with `make docker-down`. Use `make docker-reset` only when all Docker
+volumes and their development data should be deleted.
+
 ## 4. Enter the Application Directory and Install Dependencies
 
 Run from: **repository root** (`RAGDocumentsIntelligence/`).
@@ -76,6 +113,9 @@ OPENAI_API_KEY=""
 This mode runs FastAPI, Celery, Celery Beat, and Flower from the `rag` Conda
 environment. Docker runs only PostgreSQL/PGVector, RabbitMQ, and Redis. Open a
 separate terminal for each long-running command.
+
+The `make` commands above are preferred for team development. The expanded
+commands below document exactly what each target executes.
 
 ### Terminal 1 — Start the infrastructure
 

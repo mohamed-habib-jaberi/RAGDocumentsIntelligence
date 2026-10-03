@@ -17,6 +17,11 @@ This directory contains the Docker setup for RAG Document Intelligence, includin
 
 ## Setup Instructions
 
+From the repository root, the shared `Makefile` provides the recommended team
+commands: `make env-docker`, `make docker-up`, `make docker-logs`, and
+`make docker-down`. The commands below remain available when working directly
+inside `RAGDocumentsIntelligence/docker/`.
+
 ### 1. Set up environment files
 
 Create your environment files from the examples:
