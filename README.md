@@ -196,10 +196,13 @@ conda activate rag
 cd src
 "$CONDA_PREFIX/bin/python" -m celery \
   -A celery_app.celery_app flower \
-  --conf=flowerconfig.py
+  --conf=flowerconfig.py \
+  --port=5555
 ```
 
-Open Flower at `http://localhost:5555`.
+Using `"$CONDA_PREFIX/bin/python"` is important even when the prompt displays
+`(rag)`: it prevents a higher-priority pyenv shim from loading a Python build
+that does not provide `_lzma`. Open Flower at `http://localhost:5555`.
 
 ## 7. Load Configuration and Organize Routes
 
