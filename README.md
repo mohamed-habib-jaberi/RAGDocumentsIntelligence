@@ -11,8 +11,8 @@ HTTP Client
 FastAPI (project API)
     ├── LLM: answer generation
     ├── Embeddings: text vector representation
-    ├── MongoDB: projects, files, and chunks
-    └── Vector database: semantic search
+    ├── PostgreSQL: projects, files, chunks, and task executions
+    └── Qdrant or PGVector: semantic search
 ```
 
 ## 2. Prerequisites
@@ -63,20 +63,119 @@ APP_VERSION="0.1"
 OPENAI_API_KEY=""
 ```
 
-## 6. Start MongoDB with Docker
+## 6. Run Locally with Docker Dependencies
+
+This mode runs FastAPI, Celery, Celery Beat, and Flower from the `rag` Conda
+environment. Docker runs only PostgreSQL/PGVector, RabbitMQ, and Redis. Open a
+separate terminal for each long-running command.
+
+### Terminal 1 — Start the infrastructure
+
+From the repository root:
 
 ```bash
-cd ../docker
-docker compose up -d
-cd ../src
+conda activate rag
+cd docker
+docker compose up -d rabbitmq redis pgvector
+docker compose ps rabbitmq redis pgvector
 ```
 
-MongoDB is exposed locally on port `27007`. Data is stored in `docker/mongodb/`, a Git-ignored directory.
+If Compose reports an obsolete container from another branch, recreate this
+subset and remove only orphaned containers:
+
+```bash
+docker compose up -d --remove-orphans rabbitmq redis pgvector
+```
+
+Follow the infrastructure logs when troubleshooting:
+
+```bash
+docker compose logs -f rabbitmq redis pgvector
+```
+
+The local values in `src/.env` must use the published host ports:
 
 ```env
-MONGODB_URL="mongodb://localhost:27007"
-MONGODB_DATABASE="rag_document_intelligence"
+POSTGRES_HOST="localhost"
+POSTGRES_PORT=5400
+CELERY_BROKER_URL="amqp://rag_user:change-me@localhost:5672/rag_vhost"
+CELERY_RESULT_BACKEND="redis://:change-me@localhost:6379/0"
 ```
+
+### Apply PostgreSQL migrations
+
+Run migrations once after creating the database, and again whenever a new
+Alembic migration is added:
+
+```bash
+cd src/models/db_schemes/minirag
+cp -n alembic.ini.example alembic.ini
+"$CONDA_PREFIX/bin/python" -m alembic upgrade head
+cd ../../../
+```
+
+### Terminal 2 — Start FastAPI
+
+Port `8001` keeps the local server separate from the Docker FastAPI port:
+
+```bash
+conda activate rag
+cd src
+"$CONDA_PREFIX/bin/python" -m uvicorn main:app \
+  --reload \
+  --host 0.0.0.0 \
+  --port 8001
+```
+
+Open `http://localhost:8001/docs` or verify the API with:
+
+```bash
+curl http://localhost:8001/api/v1/
+```
+
+### Terminal 3 — Start the Celery worker
+
+The worker must consume every queue declared by this branch. The duplicate
+`file_processing,file_processing` shown in an earlier command is incorrect.
+
+```bash
+conda activate rag
+cd src
+"$CONDA_PREFIX/bin/python" -m celery \
+  -A celery_app.celery_app worker \
+  --loglevel=INFO \
+  --queues=default,file_processing,data_indexing,mail_service_queue \
+  --pool=solo \
+  --concurrency=1
+```
+
+`--pool=solo` is recommended for local macOS development. Production workers
+can use their normal prefork pool and the configured concurrency.
+
+### Terminal 4 — Start scheduled tasks
+
+```bash
+conda activate rag
+cd src
+"$CONDA_PREFIX/bin/python" -m celery \
+  -A celery_app.celery_app beat \
+  --loglevel=INFO
+```
+
+### Terminal 5 — Start Flower monitoring
+
+Flower is already installed by `requirements.txt`; no additional
+`pip install flower` command is required.
+
+```bash
+conda activate rag
+cd src
+"$CONDA_PREFIX/bin/python" -m celery \
+  -A celery_app.celery_app flower \
+  --conf=flowerconfig.py
+```
+
+Open Flower at `http://localhost:5555`.
 
 ## 7. Load Configuration and Organize Routes
 
@@ -86,16 +185,15 @@ factory, and registers FastAPI routers. The base route is versioned under
 
 `GET /api/v1/` returns the application name and version defined in `.env`, confirming both API availability and configuration loading.
 
-## 8. Start the FastAPI Application
+## 8. Verify the FastAPI Application
+
+For the local mode from section 6, use `http://localhost:8001`. For the full
+Docker mode, use `http://localhost:5001` directly or `http://localhost` through
+Nginx.
 
 ```bash
-"$CONDA_PREFIX/bin/python" -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Verify the base endpoint:
-
-```bash
-curl http://127.0.0.1:8000/api/v1/
+curl http://localhost:8001/api/v1/
+curl http://localhost:8001/api/v1/send_reports
 ```
 
 ## 9. Upload a Document
@@ -103,7 +201,7 @@ curl http://127.0.0.1:8000/api/v1/
 `POST /api/v1/data/upload/{project_id}` accepts TXT and PDF files declared in `.env`. It validates MIME type and size, sanitizes the client filename, creates a project folder, and writes the file asynchronously under `src/assets/files/`.
 
 ```bash
-curl -F "file=@document.pdf" http://127.0.0.1:8000/api/v1/data/upload/demo-project
+curl -F "file=@document.pdf" http://localhost:8001/api/v1/data/upload/1
 ```
 
 Uploaded documents are not versioned: `src/assets/.gitignore` protects runtime data.
@@ -124,7 +222,9 @@ After upload, call `POST /api/v1/data/process/{project_id}` with the identifier 
 
 ## 11. Track File Assets
 
-Every successful upload now creates an `assets` collection record with the project ObjectId, server-side filename, file type, size, and upload timestamp. A compound index prevents two assets with the same filename in one project.
+Every successful upload creates an `assets` record containing the project ID,
+server-side filename, file type, size, and upload timestamp. A compound index
+prevents duplicate filenames within one project.
 
 Processing can now target one `file_id` or omit it to process every asset belonging to the project. Each stored chunk references both its project and source asset.
 
@@ -138,11 +238,16 @@ Qdrant stores document embeddings for semantic retrieval. Configure the local pa
 
 ## 14. Persist Projects and Chunks
 
-The first upload creates a project in MongoDB's `projects` collection. Processing inserts chunk batches into `chunks`, including their text, metadata, order, and owning project ObjectId. With `do_reset: true`, existing project chunks are removed before the new insertion.
+The first upload creates a row in PostgreSQL's `projects` table. Processing
+inserts rows into `chunks`, including their text, metadata, order, and owning
+project and asset IDs. With `do_reset: true`, existing project chunks are
+removed before the new insertion.
 
 ## 15. Test with Postman
 
-Import `assets/rag-document-intelligence.postman_collection.json`, set `api` to `http://127.0.0.1:8000`, then run requests in order: `API configuration endpoint`, `Upload document`, and `Process document`.
+Import `assets/rag-document-intelligence.postman_collection.json`. Set `api` to
+`http://localhost:8001` for local mode, `http://localhost:5001` for direct
+Docker access, or `http://localhost` for Nginx. Then run the requests in order.
 
 ## 16. Index, Search, and Answer with RAG
 
@@ -212,6 +317,64 @@ cloud key, a host Ollama URL (`http://host.docker.internal:11434/v1` on macOS),
 or a Colab/ngrok URL. See [docker/README.md](docker/README.md) for deployment
 steps and [the Ollama guide](docs/OLLAMA_LOCAL_AND_COLAB.md) for the profile
 configuration.
+
+### Prepare Docker environment files
+
+```bash
+cd docker/env
+cp -n .env.example.app .env.app
+cp -n .env.example.postgres .env.postgres
+cp -n .env.example.postgres-exporter .env.postgres-exporter
+cp -n .env.example.rabbitmq .env.rabbitmq
+cp -n .env.example.redis .env.redis
+cp -n .env.example.grafana .env.grafana
+
+cd ../minirag
+cp -n alembic.example.ini alembic.ini
+```
+
+Review the copied files and keep the PostgreSQL, RabbitMQ, and Redis passwords
+consistent between their service files and `.env.app`.
+
+### Start the complete Docker stack
+
+```bash
+cd docker
+docker compose up -d --build
+docker compose ps
+```
+
+The main URLs are:
+
+- Nginx API: `http://localhost/api/v1/`
+- Direct FastAPI API: `http://localhost:5001/api/v1/`
+- FastAPI documentation: `http://localhost:5001/docs`
+- Flower: `http://localhost:5555`
+- RabbitMQ management: `http://localhost:15672`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+- Qdrant dashboard: `http://localhost:6333/dashboard`
+
+### Inspect logs
+
+```bash
+docker compose logs -f fastapi
+docker compose logs -f celery-worker celery-beat flower
+docker compose logs -f rabbitmq redis pgvector
+```
+
+### Stop the stack
+
+```bash
+docker compose down
+```
+
+To also delete all persisted development data, use the following destructive
+command only when a complete reset is intended:
+
+```bash
+docker compose down -v --remove-orphans
+```
 
 ## 22. Background Document Processing with Celery
 
