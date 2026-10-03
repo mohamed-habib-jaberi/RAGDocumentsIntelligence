@@ -48,6 +48,32 @@ or both. It resolves that environment to its absolute interpreter path and
 removes inherited Python and macOS launcher variables. Packages and the
 standard library from a pyenv installation therefore cannot leak into Conda.
 
+### Component command reference
+
+Run these commands from the **repository root**
+(`RAGDocumentsIntelligence/`). The `api`, `worker`, `beat`, `flower`, and
+`check-python` commands also work directly from `src/`.
+
+| Component or operation | Command | Address or purpose |
+|---|---|---|
+| Available commands | `make help` | Display every Make target |
+| Python verification | `make check-python` | Confirm the interpreter and `_lzma` support |
+| Python dependencies | `make install` | Install and validate `src/requirements.txt` |
+| Local environment | `make env-local` | Create `src/.env` when missing |
+| Docker environments | `make env-docker` | Create the required `docker/env/.env.*` files |
+| PostgreSQL migrations | `make migrate` | Upgrade the schema to the latest Alembic revision |
+| PostgreSQL + RabbitMQ + Redis | `make infra` | Start dependencies for local development |
+| Infrastructure logs | `make infra-logs` | Follow PostgreSQL, RabbitMQ, and Redis logs |
+| FastAPI | `make api` | `http://localhost:8001` |
+| FastAPI Swagger | `make api` | `http://localhost:8001/docs` |
+| Celery worker | `make worker` | Consume all application queues |
+| Celery Beat | `make beat` | Run scheduled Celery tasks |
+| Flower | `make flower` | `http://localhost:5555` |
+| Complete Docker stack | `make docker-up` | Build and start every container |
+| Docker logs | `make docker-logs` | Follow API and Celery logs |
+| Stop Docker stack | `make docker-down` | Stop containers and retain data |
+| Reset Docker stack | `make docker-reset` | Stop containers and delete volumes/data |
+
 To select another Conda environment or a virtualenv interpreter explicitly:
 
 ```bash
