@@ -1,9 +1,7 @@
 """Define Celery tasks for the data indexing workflow."""
 
 from celery_app import celery_app, get_setup_utils
-from helpers.config import get_settings
 import asyncio
-from fastapi.responses import JSONResponse
 from models.ProjectModel import ProjectModel
 from models.ChunkModel import ChunkModel
 from controllers import NLPController
@@ -16,6 +14,7 @@ logger = logging.getLogger(__name__)
 @celery_app.task(
                  bind=True, name="tasks.data_indexing.index_data_content",
                  autoretry_for=(Exception,),
+                 dont_autoretry_for=(ValueError,),
                  retry_kwargs={'max_retries': 3, 'countdown': 60}
                 )
 def index_data_content(self, project_id: int, do_reset: int):
@@ -53,15 +52,10 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
         )
 
         if not project:
-
-            task_instance.update_state(
-                state="FAILURE",
-                meta={
-                    "signal": ResponseSignal.PROJECT_NOT_FOUND_ERROR.value
-                }
+            raise ValueError(
+                f"{ResponseSignal.PROJECT_NOT_FOUND_ERROR.value}: "
+                f"project_id={project_id}"
             )
-
-            raise Exception(f"No project found for project_id: {project_id}")
 
         nlp_controller = NLPController(
             vectordb_client=vectordb_client,
@@ -107,27 +101,14 @@ async def _index_data_content(task_instance, project_id: int, do_reset: int):
             )
 
             if not is_inserted:
-
-
-                task_instance.update_state(
-                    state="FAILURE",
-                    meta={
-                        "signal": ResponseSignal.INSERT_INTO_VECTORDB_ERROR.value
-                    }
+                raise ValueError(
+                    f"{ResponseSignal.INSERT_INTO_VECTORDB_ERROR.value}: "
+                    f"project_id={project_id}"
                 )
-
-                raise Exception(f"can not insert into vectorDB | project_id: {project_id}")
 
             pbar.update(len(page_chunks))
             inserted_items_count += len(page_chunks)
 
-
-        task_instance.update_state(
-            state="SUCCESS",
-            meta={
-                "signal": ResponseSignal.INSERT_INTO_VECTORDB_SUCCESS.value,
-            }
-        )
 
         return {
                 "signal": ResponseSignal.INSERT_INTO_VECTORDB_SUCCESS.value,

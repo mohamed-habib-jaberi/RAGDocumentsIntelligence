@@ -468,6 +468,18 @@ The `GET /api/v1/send_reports` endpoint submits the report simulation to
 `mail_service_queue` and immediately returns its Celery `task_id`; the worker
 continues the work without blocking FastAPI.
 
+### Troubleshoot a `FAILURE` state in Flower
+
+- `relation "celery_task_executions" does not exist`: run `alembic upgrade
+  head` from `src/models/db_schemes/minirag/` before submitting a new task.
+- `no_file_found_with_this_id`: use the same numeric `project_id` used during
+  upload and copy the returned `file_id` exactly into the processing request.
+- Do not combine FastAPI running in Docker with a Celery worker running on the
+  host. Uploaded files live in a Docker volume that the local worker cannot
+  read. Run both application processes locally, or run both with Compose.
+- A failed task is historical and remains red in Flower. Submit a new request
+  after fixing the cause and verify the state of the new `task_id`.
+
 ## 23. Celery Workflows, Beat, and Flower
 
 The Docker stack now starts separate Celery worker and Beat services, plus the

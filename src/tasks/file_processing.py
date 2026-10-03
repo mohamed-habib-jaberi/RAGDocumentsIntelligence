@@ -19,10 +19,11 @@ logger = logging.getLogger(__name__)
 @celery_app.task(
                  bind=True, name="tasks.file_processing.process_project_files",
                  autoretry_for=(Exception,),
+                 dont_autoretry_for=(ValueError, FileNotFoundError),
                  retry_kwargs={'max_retries': 3, 'countdown': 60}
                 )
 def process_project_files(self, project_id: int, 
-                          file_id: int, chunk_size: int,
+                          file_id: str | None, chunk_size: int,
                           overlap_size: int, do_reset: int):
 
     """Queue background processing for every uploaded file in a project."""
@@ -125,13 +126,6 @@ async def _process_project_files(task_instance, project_id: int,
             )
 
             if asset_record is None:
-                task_instance.update_state(
-                    state="FAILURE",
-                    meta={
-                        "signal": ResponseSignal.FILE_ID_ERROR.value,
-                    }
-                )
-
                 # Update task status to FAILURE
                 await idempotency_manager.update_task_status(
                     execution_id=task_record.execution_id,
@@ -139,7 +133,12 @@ async def _process_project_files(task_instance, project_id: int,
                     result={"signal": ResponseSignal.FILE_ID_ERROR.value}
                 )
 
-                raise Exception(f"No assets for file: {file_id}")
+                # Raising a real exception lets Celery serialize FAILURE with
+                # the required exc_type and exc_message metadata.
+                raise ValueError(
+                    f"{ResponseSignal.FILE_ID_ERROR.value}: file_id={file_id}, "
+                    f"project_id={project_id}"
+                )
 
             project_files_ids = {
                 asset_record.asset_id: asset_record.asset_name
@@ -159,14 +158,6 @@ async def _process_project_files(task_instance, project_id: int,
             }
 
         if len(project_files_ids) == 0:
-
-            task_instance.update_state(
-                state="FAILURE",
-                meta={
-                    "signal": ResponseSignal.NO_FILES_ERROR.value,
-                }
-            )
-
             # Update task status to FAILURE
             await idempotency_manager.update_task_status(
                 execution_id=task_record.execution_id,
@@ -174,7 +165,10 @@ async def _process_project_files(task_instance, project_id: int,
                 result={"signal": ResponseSignal.NO_FILES_ERROR.value,}
             )
 
-            raise Exception(f"No files found for project_id: {project.project_id}")
+            raise ValueError(
+                f"{ResponseSignal.NO_FILES_ERROR.value}: "
+                f"project_id={project.project_id}"
+            )
 
         process_controller = ProcessController(project_id=project_id)
 
@@ -201,7 +195,14 @@ async def _process_project_files(task_instance, project_id: int,
 
             if file_content is None:
                 logger.error(f"Error while processing file: {file_id}")
-                continue
+                await idempotency_manager.update_task_status(
+                    execution_id=task_record.execution_id,
+                    status='FAILURE',
+                    result={"signal": ResponseSignal.FILE_ID_ERROR.value},
+                )
+                raise FileNotFoundError(
+                    f"Uploaded file is missing from storage: {file_id}"
+                )
 
             file_chunks = process_controller.process_file_content(
                 file_content=file_content,
@@ -211,9 +212,12 @@ async def _process_project_files(task_instance, project_id: int,
             )
 
             if file_chunks is None or len(file_chunks) == 0:
-
-                logger.error(f"No chunks for file_id: {file_id}")
-                pass
+                await idempotency_manager.update_task_status(
+                    execution_id=task_record.execution_id,
+                    status='FAILURE',
+                    result={"signal": ResponseSignal.PROCESSING_FAILED.value},
+                )
+                raise ValueError(f"No chunks generated for file_id: {file_id}")
 
             file_chunks_records = [
                 DataChunk(
@@ -228,13 +232,6 @@ async def _process_project_files(task_instance, project_id: int,
 
             no_records += await chunk_model.insert_many_chunks(chunks=file_chunks_records)
             no_files += 1
-
-        task_instance.update_state(
-            state="SUCCESS",
-            meta={
-                "signal": ResponseSignal.PROCESSING_SUCCESS.value,
-            }
-        )
 
         await idempotency_manager.update_task_status(
             execution_id=task_record.execution_id,

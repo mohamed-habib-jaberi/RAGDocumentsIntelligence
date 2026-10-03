@@ -33,7 +33,7 @@ class IdempotencyManager:
             task_args=task_args,
             celery_task_id=celery_task_id,
             status='PENDING',
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
 
         session = self.db_client()
@@ -55,7 +55,7 @@ class IdempotencyManager:
                 if result:
                     task_record.result = result
                 if status in ['SUCCESS', 'FAILURE']:
-                    task_record.completed_at = datetime.utcnow()
+                    task_record.completed_at = datetime.now(timezone.utc)
                 await session.commit()
         finally:
             await session.close()
@@ -98,7 +98,9 @@ class IdempotencyManager:
         # Check if task is stuck (running longer than time limit + 60 seconds)
         if existing_task.status in ['PENDING', 'STARTED', 'RETRY']:
             if existing_task.started_at:
-                time_elapsed = (datetime.utcnow() - existing_task.started_at).total_seconds()
+                time_elapsed = (
+                    datetime.now(timezone.utc) - existing_task.started_at
+                ).total_seconds()
                 time_gap = 60  # 60 seconds grace period
                 if time_elapsed > (task_time_limit + time_gap):
                     return True, existing_task  # Task is stuck, allow re-execution
