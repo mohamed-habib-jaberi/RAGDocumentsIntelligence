@@ -189,6 +189,16 @@ cd src
 Flower is already installed by `requirements.txt`; no additional
 `pip install flower` command is required.
 
+For authenticated access, add the following setting to `src/.env` before
+starting Flower (replace the example value):
+
+```env
+CELERY_FLOWER_PASSWORD="change-me"
+```
+
+If the setting is omitted, Flower starts without basic authentication for
+local development.
+
 Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
