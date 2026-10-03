@@ -37,10 +37,14 @@ export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
 
 ```bash
 cd src
-pip install -r requirements.txt
+"$CONDA_PREFIX/bin/python" -m pip install -r requirements.txt
+"$CONDA_PREFIX/bin/python" -m pip check
 ```
 
 Versions are pinned so every developer uses compatible dependencies. FastAPI defines routes, Uvicorn runs the application, and `python-multipart` supports file uploads.
+Using the interpreter under `CONDA_PREFIX` prevents an active pyenv shim or
+another global Python installation from receiving the project dependencies by
+mistake.
 
 ## 5. Configure the Environment
 
@@ -85,14 +89,32 @@ factory, and registers FastAPI routers. The base route is versioned under
 
 ## 8. Start the FastAPI Application
 
+The recommended integration-test mode runs the complete application stack in
+Docker:
+
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+cd ../docker
+docker compose up -d --build
+```
+
+FastAPI is then available directly on `http://localhost:5001`, and through
+Nginx on `http://localhost`. Docker keeps listening on port `8000` inside its
+network; only the published host port changes to `5001`.
+
+For local-only debugging, stop the Docker `fastapi` and `nginx` services first,
+then run:
+
+```bash
+cd ../src
+"$CONDA_PREFIX/bin/python" -m uvicorn main:app \
+  --reload --host 0.0.0.0 --port 8000
 ```
 
 Verify the base endpoint:
 
 ```bash
-curl http://127.0.0.1:8000/api/v1/
+curl http://127.0.0.1:5001/api/v1/
+curl http://127.0.0.1/api/v1/
 ```
 
 ## 9. Upload a Document
@@ -222,8 +244,25 @@ Start the worker separately after the broker and database services are ready:
 
 ```bash
 cd src
-celery -A celery_app.celery_app worker --loglevel=INFO --queues=file_processing
+"$CONDA_PREFIX/bin/python" -m celery \
+  -A celery_app.celery_app worker \
+  --loglevel=INFO \
+  --queues=file_processing \
+  --pool=solo \
+  --concurrency=1
 ```
+
+The `solo` pool is the reliable local choice on macOS. If a traceback still
+references `~/.pyenv/`, verify the selected interpreter before starting the
+worker:
+
+```bash
+echo "$CONDA_PREFIX"
+"$CONDA_PREFIX/bin/python" -c "import sys, lzma; print(sys.executable)"
+```
+
+The printed path must point to the `rag` Conda environment, and importing
+`lzma` must succeed.
 
 The task worker uses the same `LLM_MODE` configuration as the API, so it can
 process embeddings with Ollama, Colab/ngrok, or the cloud profile.

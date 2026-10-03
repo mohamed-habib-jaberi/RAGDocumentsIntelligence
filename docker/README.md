@@ -80,8 +80,8 @@ docker compose down -v --remove-orphans
 
 ### 3. Access the services
 
-- FastAPI Application: http://localhost:8000
-- FastAPI Documentation: http://localhost:8000/docs
+- FastAPI Application: http://localhost:5001
+- FastAPI Documentation: http://localhost:5001/docs
 - Nginx (serving FastAPI): http://localhost
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000

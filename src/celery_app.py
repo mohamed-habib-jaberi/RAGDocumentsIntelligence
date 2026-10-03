@@ -53,7 +53,7 @@ celery_app = Celery(
     "minirag",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=[
+    include=["tasks.mail_service",
         "tasks.file_processing"
     ]
 )
@@ -73,7 +73,7 @@ celery_app.conf.update(
     task_time_limit=settings.CELERY_TASK_TIME_LIMIT,
 
     # Result backend - Store results for status tracking
-    task_ignore_resul=False,
+    task_ignore_result=False,
     result_expires=3600,
 
     # Worker settings
@@ -86,9 +86,9 @@ celery_app.conf.update(
     worker_cancel_long_running_tasks_on_connection_loss=True,
 
     task_routes={
+        "tasks.mail_service.send_email_reports": {"queue": "mail_service_queue"},
         "tasks.file_processing.process_project_files": {"queue": "file_processing"}
     }
-
 )
 
 celery_app.conf.task_default_queue = "default"
