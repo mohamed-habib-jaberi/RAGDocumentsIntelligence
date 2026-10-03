@@ -22,6 +22,8 @@ FastAPI (project API)
 
 ## 3. Create and Activate the Python Environment
 
+Run from: **any directory**.
+
 ```bash
 conda create -n rag python=3.11 -y
 conda activate rag
@@ -29,11 +31,15 @@ conda activate rag
 
 Optionally, make the terminal prompt easier to read:
 
+Run from: **any directory**, after activating `rag`.
+
 ```bash
 export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
 ```
 
 ## 4. Enter the Application Directory and Install Dependencies
+
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 cd src
@@ -46,6 +52,8 @@ Using the interpreter under `CONDA_PREFIX` prevents pyenv or a global Python
 installation from receiving the project dependencies by mistake.
 
 ## 5. Configure the Environment
+
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 cd src
@@ -71,7 +79,7 @@ separate terminal for each long-running command.
 
 ### Terminal 1 — Start the infrastructure
 
-From the repository root:
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 conda activate rag
@@ -83,11 +91,15 @@ docker compose ps rabbitmq redis pgvector
 If Compose reports an obsolete container from another branch, recreate this
 subset and remove only orphaned containers:
 
+Run from: **`RAGDocumentsIntelligence/docker/`**.
+
 ```bash
 docker compose up -d --remove-orphans rabbitmq redis pgvector
 ```
 
 Follow the infrastructure logs when troubleshooting:
+
+Run from: **`RAGDocumentsIntelligence/docker/`**.
 
 ```bash
 docker compose logs -f rabbitmq redis pgvector
@@ -107,6 +119,8 @@ CELERY_RESULT_BACKEND="redis://:change-me@localhost:6379/0"
 Run migrations once after creating the database, and again whenever a new
 Alembic migration is added:
 
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
+
 ```bash
 cd src/models/db_schemes/minirag
 cp -n alembic.ini.example alembic.ini
@@ -117,6 +131,8 @@ cd ../../../
 ### Terminal 2 — Start FastAPI
 
 Port `8001` keeps the local server separate from the Docker FastAPI port:
+
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 conda activate rag
@@ -129,6 +145,8 @@ cd src
 
 Open `http://localhost:8001/docs` or verify the API with:
 
+Run from: **any directory**.
+
 ```bash
 curl http://localhost:8001/api/v1/
 ```
@@ -137,6 +155,8 @@ curl http://localhost:8001/api/v1/
 
 The worker must consume every queue declared by this branch. The duplicate
 `file_processing,file_processing` shown in an earlier command is incorrect.
+
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 conda activate rag
@@ -154,6 +174,8 @@ can use their normal prefork pool and the configured concurrency.
 
 ### Terminal 4 — Start scheduled tasks
 
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
+
 ```bash
 conda activate rag
 cd src
@@ -166,6 +188,8 @@ cd src
 
 Flower is already installed by `requirements.txt`; no additional
 `pip install flower` command is required.
+
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 conda activate rag
@@ -191,6 +215,8 @@ For the local mode from section 6, use `http://localhost:8001`. For the full
 Docker mode, use `http://localhost:5001` directly or `http://localhost` through
 Nginx.
 
+Run from: **any directory**.
+
 ```bash
 curl http://localhost:8001/api/v1/
 curl http://localhost:8001/api/v1/send_reports
@@ -199,6 +225,8 @@ curl http://localhost:8001/api/v1/send_reports
 ## 9. Upload a Document
 
 `POST /api/v1/data/upload/{project_id}` accepts TXT and PDF files declared in `.env`. It validates MIME type and size, sanitizes the client filename, creates a project folder, and writes the file asynchronously under `src/assets/files/`.
+
+Run from: **the directory containing `document.pdf`**.
 
 ```bash
 curl -F "file=@document.pdf" http://localhost:8001/api/v1/data/upload/1
@@ -272,12 +300,15 @@ Configure `POSTGRES_USERNAME`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_P
 
 Start the PostgreSQL container from `docker/`, then initialize the schema:
 
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
+
 ```bash
+cd docker
 docker compose up -d pgvector
 cd ../src/models/db_schemes/minirag
-cp alembic.ini.example alembic.ini
+cp -n alembic.ini.example alembic.ini
 # Set sqlalchemy.url in alembic.ini, then run:
-alembic upgrade head
+"$CONDA_PREFIX/bin/python" -m alembic upgrade head
 ```
 
 The Alembic directory is kept with this tutorial step so schema changes can be generated and applied predictably.
@@ -320,6 +351,8 @@ configuration.
 
 ### Prepare Docker environment files
 
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
+
 ```bash
 cd docker/env
 cp -n .env.example.app .env.app
@@ -337,6 +370,8 @@ Review the copied files and keep the PostgreSQL, RabbitMQ, and Redis passwords
 consistent between their service files and `.env.app`.
 
 ### Start the complete Docker stack
+
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 cd docker
@@ -357,6 +392,8 @@ The main URLs are:
 
 ### Inspect logs
 
+Run from: **`RAGDocumentsIntelligence/docker/`**.
+
 ```bash
 docker compose logs -f fastapi
 docker compose logs -f celery-worker celery-beat flower
@@ -365,12 +402,16 @@ docker compose logs -f rabbitmq redis pgvector
 
 ### Stop the stack
 
+Run from: **`RAGDocumentsIntelligence/docker/`**.
+
 ```bash
 docker compose down
 ```
 
 To also delete all persisted development data, use the following destructive
 command only when a complete reset is intended:
+
+Run from: **`RAGDocumentsIntelligence/docker/`**.
 
 ```bash
 docker compose down -v --remove-orphans
@@ -385,6 +426,8 @@ request. RabbitMQ carries tasks and Redis stores task results. Copy
 in `docker/env/.env.app`.
 
 Start the worker separately after the broker and database services are ready:
+
+Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 cd src
@@ -401,6 +444,8 @@ process embeddings with Ollama, Colab/ngrok, or the cloud profile.
 
 On macOS, `--pool=solo` avoids multiprocessing issues. Confirm that the active
 Conda interpreter provides the standard `lzma` module before starting Celery:
+
+Run from: **`RAGDocumentsIntelligence/src/`** with the `rag` environment active.
 
 ```bash
 "$CONDA_PREFIX/bin/python" -c "import sys, lzma; print(sys.executable)"
