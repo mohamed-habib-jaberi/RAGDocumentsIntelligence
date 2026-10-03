@@ -50,7 +50,7 @@ async def get_setup_utils():
 
 # Create Celery application instance
 celery_app = Celery(
-    "minirag",
+    "rag_documents_intelligence",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
     include=["tasks.mail_service",
