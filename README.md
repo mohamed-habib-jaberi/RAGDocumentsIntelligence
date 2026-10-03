@@ -46,6 +46,8 @@ automatically. By default it runs Python through the Conda environment named
 `rag`, independently of whether the current shell displays `(base)`, `(.venv)`,
 or both. It also removes inherited `PYTHONPATH` and `PYTHONHOME` values so
 packages from a pyenv installation cannot leak into the selected environment.
+On macOS, it also removes `__PYVENV_LAUNCHER__`, which can otherwise force
+Conda to reuse the standard library of a previously activated virtualenv.
 
 To select another Conda environment or a virtualenv interpreter explicitly:
 

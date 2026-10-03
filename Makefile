@@ -6,9 +6,18 @@ SHELL := /bin/sh
 # make PYTHON=.venv/bin/python api
 CONDA_ENV ?= rag
 PYTHON ?= conda run --no-capture-output -n $(CONDA_ENV) python
-# Prevent an activated pyenv/virtualenv shell from injecting incompatible
-# stdlib or site-packages paths into the selected project interpreter.
-PYTHON_CMD := env -u PYTHONHOME -u PYTHONPATH PYTHONNOUSERSITE=1 $(PYTHON)
+# Prevent an activated pyenv/virtualenv shell (including VS Code's macOS
+# launcher variable) from injecting an incompatible stdlib or site-packages
+# directory into the selected project interpreter.
+PYTHON_CMD := env \
+	-u __PYVENV_LAUNCHER__ \
+	-u VIRTUAL_ENV \
+	-u PYTHONEXECUTABLE \
+	-u PYTHONHOME \
+	-u PYTHONPATH \
+	-u PYENV_VERSION \
+	PYTHONNOUSERSITE=1 \
+	$(PYTHON)
 SRC_DIR := src
 ALEMBIC_DIR := $(SRC_DIR)/models/db_schemes/minirag
 COMPOSE := docker compose --project-directory docker -f docker/docker-compose.yml
