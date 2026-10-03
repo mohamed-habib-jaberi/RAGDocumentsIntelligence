@@ -1,13 +1,18 @@
 SHELL := /bin/sh
 
-# Prefer the interpreter from the activated Conda/virtualenv environment. Team
-# members can also override it explicitly: make PYTHON=/path/to/python api
-PYTHON ?= $(if $(CONDA_PREFIX),$(CONDA_PREFIX)/bin/python,$(if $(VIRTUAL_ENV),$(VIRTUAL_ENV)/bin/python,python3))
+# Run through the project's named Conda environment so shell ordering between
+# pyenv, Conda base, and virtualenv cannot select the wrong interpreter.
+# Teams not using Conda can override PYTHON, for example:
+# make PYTHON=.venv/bin/python api
+CONDA_ENV ?= rag
+PYTHON ?= conda run --no-capture-output -n $(CONDA_ENV) python
 SRC_DIR := src
 ALEMBIC_DIR := $(SRC_DIR)/models/db_schemes/minirag
 COMPOSE := docker compose --project-directory docker -f docker/docker-compose.yml
 CELERY_APP := celery_app.celery_app
 CELERY_QUEUES := default,file_processing,data_indexing,mail_service_queue
+API_PORT ?= 8001
+FLOWER_PORT ?= 5555
 
 .DEFAULT_GOAL := help
 
@@ -15,7 +20,7 @@ CELERY_QUEUES := default,file_processing,data_indexing,mail_service_queue
 
 help:
 	@printf '%s\n' \
-	  'Run every target from the repository root:' \
+	  'Run every target from the repository root (default Conda env: rag):' \
 	  '  make install       Install and verify Python dependencies' \
 	  '  make env-local     Create src/.env if it does not exist' \
 	  '  make env-docker    Create Docker .env files if missing' \
@@ -59,7 +64,7 @@ migrate:
 
 api:
 	cd $(SRC_DIR) && $(PYTHON) -m uvicorn main:app \
-		--reload --host 0.0.0.0 --port 8001
+		--reload --host 0.0.0.0 --port $(API_PORT)
 
 worker:
 	cd $(SRC_DIR) && $(PYTHON) -m celery \
@@ -77,7 +82,7 @@ flower:
 	cd $(SRC_DIR) && $(PYTHON) -m celery \
 		-A $(CELERY_APP) flower \
 		--conf=flowerconfig.py \
-		--port=5555
+		--port=$(FLOWER_PORT)
 
 check:
 	cd $(SRC_DIR) && PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m compileall -q .

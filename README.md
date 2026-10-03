@@ -42,8 +42,16 @@ export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
 The repository `Makefile` is the recommended interface for local development.
 Every `make` command below must be run from the **repository root**
 (`RAGDocumentsIntelligence/`). The Makefile enters `src/` or `docker/`
-automatically and selects the interpreter from the active Conda or virtualenv
-environment.
+automatically. By default it runs Python through the Conda environment named
+`rag`, independently of whether the current shell displays `(base)`, `(.venv)`,
+or both.
+
+To select another Conda environment or a virtualenv interpreter explicitly:
+
+```bash
+make CONDA_ENV=my-environment api
+make PYTHON=.venv/bin/python api
+```
 
 ```bash
 make help
@@ -80,13 +88,13 @@ Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 cd src
-"$CONDA_PREFIX/bin/python" -m pip install -r requirements.txt
-"$CONDA_PREFIX/bin/python" -m pip check
+conda run --no-capture-output -n rag python -m pip install -r requirements.txt
+conda run --no-capture-output -n rag python -m pip check
 ```
 
 Versions are pinned so every developer uses compatible dependencies. FastAPI defines routes, Uvicorn runs the application, and `python-multipart` supports file uploads.
-Using the interpreter under `CONDA_PREFIX` prevents pyenv or a global Python
-installation from receiving the project dependencies by mistake.
+Using `conda run -n rag` prevents pyenv or a global Python installation from
+receiving the project dependencies by mistake.
 
 ## 5. Configure the Environment
 
@@ -164,7 +172,7 @@ Run from: **repository root** (`RAGDocumentsIntelligence/`).
 ```bash
 cd src/models/db_schemes/minirag
 cp -n alembic.ini.example alembic.ini
-"$CONDA_PREFIX/bin/python" -m alembic upgrade head
+conda run --no-capture-output -n rag python -m alembic upgrade head
 cd ../../../
 ```
 
@@ -175,9 +183,8 @@ Port `8001` keeps the local server separate from the Docker FastAPI port:
 Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
-conda activate rag
 cd src
-"$CONDA_PREFIX/bin/python" -m uvicorn main:app \
+conda run --no-capture-output -n rag python -m uvicorn main:app \
   --reload \
   --host 0.0.0.0 \
   --port 8001
@@ -199,9 +206,8 @@ The worker must consume every queue declared by this branch. The duplicate
 Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
-conda activate rag
 cd src
-"$CONDA_PREFIX/bin/python" -m celery \
+conda run --no-capture-output -n rag python -m celery \
   -A celery_app.celery_app worker \
   --loglevel=INFO \
   --queues=default,file_processing,data_indexing,mail_service_queue \
@@ -217,9 +223,8 @@ can use their normal prefork pool and the configured concurrency.
 Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
-conda activate rag
 cd src
-"$CONDA_PREFIX/bin/python" -m celery \
+conda run --no-capture-output -n rag python -m celery \
   -A celery_app.celery_app beat \
   --loglevel=INFO
 ```
@@ -242,17 +247,16 @@ local development.
 Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
-conda activate rag
 cd src
-"$CONDA_PREFIX/bin/python" -m celery \
+conda run --no-capture-output -n rag python -m celery \
   -A celery_app.celery_app flower \
   --conf=flowerconfig.py \
   --port=5555
 ```
 
-Using `"$CONDA_PREFIX/bin/python"` is important even when the prompt displays
-`(rag)`: it prevents a higher-priority pyenv shim from loading a Python build
-that does not provide `_lzma`. Open Flower at `http://localhost:5555`.
+Using `conda run -n rag` is important even when the prompt displays an active
+environment: it prevents a higher-priority pyenv shim from loading a Python
+build that does not provide `_lzma`. Open Flower at `http://localhost:5555`.
 
 ## 7. Load Configuration and Organize Routes
 
@@ -361,7 +365,7 @@ docker compose up -d pgvector
 cd ../src/models/db_schemes/minirag
 cp -n alembic.ini.example alembic.ini
 # Set sqlalchemy.url in alembic.ini, then run:
-"$CONDA_PREFIX/bin/python" -m alembic upgrade head
+conda run --no-capture-output -n rag python -m alembic upgrade head
 ```
 
 The Alembic directory is kept with this tutorial step so schema changes can be generated and applied predictably.
@@ -484,7 +488,7 @@ Run from: **repository root** (`RAGDocumentsIntelligence/`).
 
 ```bash
 cd src
-"$CONDA_PREFIX/bin/python" -m celery \
+conda run --no-capture-output -n rag python -m celery \
   -A celery_app.celery_app worker \
   --loglevel=INFO \
   --queues=default,file_processing,data_indexing,mail_service_queue \
@@ -501,7 +505,8 @@ Conda interpreter provides the standard `lzma` module before starting Celery:
 Run from: **`RAGDocumentsIntelligence/src/`** with the `rag` environment active.
 
 ```bash
-"$CONDA_PREFIX/bin/python" -c "import sys, lzma; print(sys.executable)"
+conda run --no-capture-output -n rag python \
+  -c "import sys, lzma; print(sys.executable)"
 ```
 
 The `GET /api/v1/send_reports` endpoint submits the report simulation to
