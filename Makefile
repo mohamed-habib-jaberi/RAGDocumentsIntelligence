@@ -1,23 +1,21 @@
 SHELL := /bin/sh
 
-# Run through the project's named Conda environment so shell ordering between
-# pyenv, Conda base, and virtualenv cannot select the wrong interpreter.
+# Resolve the project's named Conda environment to an absolute path so shell
+# ordering between pyenv, Conda base, and virtualenv cannot select Python.
 # Teams not using Conda can override PYTHON, for example:
 # make PYTHON=.venv/bin/python api
 CONDA_ENV ?= rag
-PYTHON ?= conda run --no-capture-output -n $(CONDA_ENV) python
-# Prevent an activated pyenv/virtualenv shell (including VS Code's macOS
-# launcher variable) from injecting an incompatible stdlib or site-packages
-# directory into the selected project interpreter.
-PYTHON_CMD := env \
+SANITIZED_ENV := env \
 	-u __PYVENV_LAUNCHER__ \
 	-u VIRTUAL_ENV \
 	-u PYTHONEXECUTABLE \
 	-u PYTHONHOME \
 	-u PYTHONPATH \
 	-u PYENV_VERSION \
-	PYTHONNOUSERSITE=1 \
-	$(PYTHON)
+	PYTHONNOUSERSITE=1
+CONDA_ENV_PREFIX = $(shell $(SANITIZED_ENV) conda env list | awk '$$1 == "$(CONDA_ENV)" {print $$NF; exit}')
+PYTHON ?= $(CONDA_ENV_PREFIX)/bin/python
+PYTHON_CMD = $(SANITIZED_ENV) $(PYTHON)
 SRC_DIR := src
 ALEMBIC_DIR := $(SRC_DIR)/models/db_schemes/minirag
 COMPOSE := docker compose --project-directory docker -f docker/docker-compose.yml

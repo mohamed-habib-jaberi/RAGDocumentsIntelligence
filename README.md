@@ -44,10 +44,9 @@ Every `make` command below must be run from the **repository root**
 (`RAGDocumentsIntelligence/`). The Makefile enters `src/` or `docker/`
 automatically. By default it runs Python through the Conda environment named
 `rag`, independently of whether the current shell displays `(base)`, `(.venv)`,
-or both. It also removes inherited `PYTHONPATH` and `PYTHONHOME` values so
-packages from a pyenv installation cannot leak into the selected environment.
-On macOS, it also removes `__PYVENV_LAUNCHER__`, which can otherwise force
-Conda to reuse the standard library of a previously activated virtualenv.
+or both. It resolves that environment to its absolute interpreter path and
+removes inherited Python and macOS launcher variables. Packages and the
+standard library from a pyenv installation therefore cannot leak into Conda.
 
 To select another Conda environment or a virtualenv interpreter explicitly:
 
