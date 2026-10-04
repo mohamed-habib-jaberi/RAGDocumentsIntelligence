@@ -26,7 +26,7 @@ FLOWER_PORT ?= 5555
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check-python install env-local env-docker infra infra-logs migrate api worker beat flower check docker-up docker-logs docker-down docker-reset
+.PHONY: help check-python install env-local env-docker infra infra-logs migration-new migrate api worker beat flower check docker-up docker-logs docker-down docker-reset
 
 help:
 	@printf '%s\n' \
@@ -36,6 +36,8 @@ help:
 	  '  make env-local     Create src/.env if it does not exist' \
 	  '  make env-docker    Create Docker .env files if missing' \
 	  '  make infra         Start PostgreSQL, RabbitMQ, and Redis' \
+	  '  make migration-new MESSAGE="description"' \
+	  '                     Generate an Alembic migration from model changes' \
 	  '  make migrate       Apply PostgreSQL migrations' \
 	  '  make api           Start local FastAPI on port 8001' \
 	  '  make worker        Start the local Celery worker' \
@@ -71,6 +73,14 @@ infra:
 
 infra-logs:
 	$(COMPOSE) logs -f rabbitmq redis pgvector
+
+migration-new: check-python
+	@test -n "$(MESSAGE)" || \
+		(echo 'Usage: make migration-new MESSAGE="describe the schema change"'; exit 1)
+	@test -f $(ALEMBIC_DIR)/alembic.ini || \
+		(echo 'Missing $(ALEMBIC_DIR)/alembic.ini; follow README section 6.'; exit 1)
+	cd $(ALEMBIC_DIR) && $(PYTHON_CMD) -m alembic revision \
+		--autogenerate -m "$(MESSAGE)"
 
 migrate: check-python
 	@test -f $(ALEMBIC_DIR)/alembic.ini || \

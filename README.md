@@ -48,6 +48,39 @@ or both. It resolves that environment to its absolute interpreter path and
 removes inherited Python and macOS launcher variables. Packages and the
 standard library from a pyenv installation therefore cannot leak into Conda.
 
+### Where to run `make` commands
+
+The recommended working directory is always the repository root. Confirm it
+with `pwd` before running a command:
+
+```bash
+cd /Users/ET35771/Documents/AI/project/RAGDocumentsIntelligence
+pwd
+conda activate rag
+make help
+```
+
+The expected directory printed by `pwd` ends with
+`RAGDocumentsIntelligence`. The name displayed in the shell prompt is not
+enough to identify the complete current path.
+
+- From `RAGDocumentsIntelligence/`, run commands normally, for example
+  `make api` or `make worker`.
+- From `RAGDocumentsIntelligence/src/`, the forwarding Makefile sends the
+  command to the repository root, so the same commands work.
+- From `src/models/db_schemes/minirag/`, there is no local Makefile. Return to
+  the repository root, or explicitly select it with `make -C ../../../..`.
+
+For example, both of these commands generate the same Alembic revision:
+
+```bash
+# Recommended: run from RAGDocumentsIntelligence/
+make migration-new MESSAGE="describe the schema change"
+
+# Alternative: run from src/models/db_schemes/minirag/
+make -C ../../../.. migration-new MESSAGE="describe the schema change"
+```
+
 ### Component command reference
 
 Run these commands from the **repository root**
@@ -61,6 +94,7 @@ Run these commands from the **repository root**
 | Python dependencies | `make install` | Install and validate `src/requirements.txt` |
 | Local environment | `make env-local` | Create `src/.env` when missing |
 | Docker environments | `make env-docker` | Create the required `docker/env/.env.*` files |
+| New Alembic migration | `make migration-new MESSAGE="describe the change"` | Compare SQLAlchemy models with PostgreSQL and generate a revision |
 | PostgreSQL migrations | `make migrate` | Upgrade the schema to the latest Alembic revision |
 | PostgreSQL + RabbitMQ + Redis | `make infra` | Start dependencies for local development |
 | Infrastructure logs | `make infra-logs` | Follow PostgreSQL, RabbitMQ, and Redis logs |
@@ -73,6 +107,59 @@ Run these commands from the **repository root**
 | Docker logs | `make docker-logs` | Follow API and Celery logs |
 | Stop Docker stack | `make docker-down` | Stop containers and retain data |
 | Reset Docker stack | `make docker-reset` | Stop containers and delete volumes/data |
+
+### Recommended local startup order
+
+The infrastructure, API, worker, scheduler, and monitoring server are
+long-running processes. Keep each application process in its own terminal.
+Run every command below from `RAGDocumentsIntelligence/`.
+
+First-time preparation:
+
+```bash
+conda activate rag
+make check-python
+make env-local
+make env-docker
+make install
+```
+
+Start and initialize the infrastructure:
+
+```bash
+make infra
+make migrate
+```
+
+Then open separate terminals, activate the same environment in each one, and
+start the required component:
+
+```bash
+# Terminal 1 — FastAPI
+conda activate rag
+make api
+
+# Terminal 2 — Celery worker
+conda activate rag
+make worker
+
+# Terminal 3 — Celery Beat scheduler
+conda activate rag
+make beat
+
+# Terminal 4 — Flower monitoring
+conda activate rag
+make flower
+```
+
+The local services are then available at:
+
+- FastAPI Swagger: `http://localhost:8001/docs`;
+- Flower: `http://localhost:5555`;
+- RabbitMQ management: `http://localhost:15672`.
+
+`make api`, `make worker`, `make beat`, and `make flower` keep running until
+you press `Ctrl+C`. Starting one of them does not replace the others.
 
 To select another Conda environment or a virtualenv interpreter explicitly:
 
@@ -90,6 +177,50 @@ make install
 make infra
 make migrate
 ```
+
+Use `make migration-new` only after changing SQLAlchemy models. Alembic
+compares the model metadata with the current PostgreSQL schema and writes a new
+revision under `src/models/db_schemes/minirag/alembic/versions/`. Review the
+generated `upgrade()` and `downgrade()` functions before running `make migrate`.
+
+Example after adding the `CeleryTaskExecution` SQLAlchemy model:
+
+```bash
+make migration-new MESSAGE="create celery_task_executions table"
+```
+
+The value passed through `MESSAGE` becomes the human-readable migration name;
+it does not modify the database by itself. The safe migration workflow is:
+
+```bash
+# 1. Modify a SQLAlchemy model.
+# 2. Generate the revision.
+make migration-new MESSAGE="add status index to task executions"
+
+# 3. Review the generated file under:
+#    src/models/db_schemes/minirag/alembic/versions/
+
+# 4. Apply it only after validating upgrade() and downgrade().
+make migrate
+```
+
+If the generated revision contains only `pass` in both `upgrade()` and
+`downgrade()`, Alembic found no difference between the SQLAlchemy metadata and
+PostgreSQL. Do not apply or commit that empty revision. Delete only the newly
+generated file, then verify that the database and migration history agree:
+
+```bash
+cd src/models/db_schemes/minirag
+# Replace this example name with the exact empty revision just generated.
+rm alembic/versions/REVISION_ID_description.py
+conda run --no-capture-output -n rag python -m alembic current
+conda run --no-capture-output -n rag python -m alembic heads
+cd ../../../..
+```
+
+Both Alembic commands should report the same revision with `(head)`. The
+`alembic_version` table and the existing schema must not be deleted merely to
+generate a new revision.
 
 Run each long-running application in a separate terminal, always from the
 repository root:
@@ -586,6 +717,126 @@ migrations, and scheduled maintenance removes old task records.
 After copying `docker/env/.env.example.app`, set a strong
 `CELERY_FLOWER_PASSWORD`. The Celery workers inherit the same Ollama/Cloud
 profile selection as the API container.
+
+### How the Celery components communicate
+
+FastAPI does not execute long-running document operations inside the HTTP
+request. A route calls a task with `.delay()`, RabbitMQ receives the serialized
+message, and a Celery worker consumes it from the configured queue. Redis stores
+Celery states and results, while PostgreSQL stores application data and the
+custom `celery_task_executions` audit records.
+
+```mermaid
+flowchart LR
+    Client["Postman / Frontend"] --> API["FastAPI routes"]
+
+    API -->|"task.delay()"| Broker["RabbitMQ<br/>Task broker"]
+    Broker --> Worker["Celery worker"]
+    Beat["Celery Beat"] -->|"Scheduled tasks"| Broker
+
+    Worker --> Tasks["Celery tasks"]
+    Tasks --> Process["ProcessController<br/>Document extraction and chunks"]
+    Tasks --> NLP["NLPController<br/>Embeddings and indexing"]
+    Tasks --> Idempotency["IdempotencyManager"]
+
+    Process --> PostgreSQL["PostgreSQL<br/>projects, assets and chunks"]
+    Idempotency --> Executions["PostgreSQL<br/>celery_task_executions"]
+    NLP --> Embedding["Embedding provider"]
+    NLP --> VectorDB["Qdrant or PGVector"]
+
+    Worker --> Redis["Redis<br/>Task states and results"]
+    Flower["Flower monitoring"] -.-> Worker
+    Flower -.-> Broker
+    Flower -.-> Redis
+```
+
+The components have distinct responsibilities:
+
+- **FastAPI routes** validate the request, enqueue a task, and immediately
+  return its task identifier to the client.
+- **RabbitMQ** transports tasks to workers. It does not store uploaded files,
+  chunks, or embeddings.
+- **Celery workers** execute document processing, embedding, indexing, report,
+  and maintenance functions outside the HTTP process.
+- **Redis** is the Celery result backend used for task states and temporary
+  return values.
+- **PostgreSQL** stores projects, assets, chunks, and persistent execution
+  records managed by `IdempotencyManager`.
+- **Qdrant or PGVector** stores the embeddings used by semantic search.
+- **Celery Beat** publishes scheduled maintenance tasks.
+- **Flower** observes workers, queues, task states, runtimes, and failures.
+
+### Celery feature and queue mapping
+
+| Trigger | Celery task | Queue | Responsibility |
+|---|---|---|---|
+| `POST /api/v1/data/process/{project_id}` | `process_project_files` | `file_processing` | Read uploaded files, create chunks, and persist them in PostgreSQL |
+| `POST /api/v1/nlp/index/push/{project_id}` | `index_data_content` | `data_indexing` | Load chunks, generate embeddings, and insert them into Qdrant or PGVector |
+| `POST /api/v1/data/process-and-push/{project_id}` | `process_and_push_workflow` | `file_processing` | Start the ordered processing and indexing workflow |
+| Internal second workflow stage | `push_after_process_task` | `default` | Receive the processing result and run vector indexing only after success |
+| `GET /api/v1/send_reports` | `send_email_reports` | `mail_service_queue` | Run the report simulation and publish `PROGRESS` states |
+| Celery Beat schedule | `clean_celery_executions_table` | `default` | Remove task-execution records past the configured retention period |
+
+The search, index-information, and RAG-answer endpoints currently execute in
+the FastAPI process; they are not Celery tasks.
+
+### Complete processing and indexing workflow
+
+The combined endpoint creates a Celery chain. Stage 2 receives the dictionary
+returned by Stage 1. If document processing raises an exception, Celery does
+not start vector indexing.
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant API as FastAPI
+    participant Rabbit as RabbitMQ
+    participant Worker as Celery worker
+    participant DB as PostgreSQL
+    participant Processor as ProcessController
+    participant Embedder as Embedding provider
+    participant Vector as Qdrant / PGVector
+    participant Redis as Redis
+
+    Client->>API: POST /process-and-push/{project_id}
+    API->>Rabbit: process_and_push_workflow.delay(...)
+    API-->>Client: workflow_task_id
+
+    Rabbit->>Worker: process_and_push_workflow
+    Worker->>Rabbit: Schedule the Celery chain
+
+    Rabbit->>Worker: process_project_files
+    Worker->>DB: Load Project and Asset records
+    Worker->>DB: Create celery_task_executions record
+    Worker->>Processor: Load PDF/TXT and create chunks
+    Processor-->>Worker: Text chunks
+    Worker->>DB: Persist chunks and SUCCESS status
+
+    alt Processing succeeds
+        Worker->>Rabbit: Return Stage 1 context
+        Rabbit->>Worker: push_after_process_task
+        Worker->>DB: Load persisted chunks in pages
+        Worker->>Embedder: Generate document embeddings
+        Embedder-->>Worker: Numerical vectors
+        Worker->>Vector: Insert texts, metadata and vectors
+        Worker->>Redis: Store SUCCESS result
+    else Processing fails
+        Worker->>DB: Store FAILURE status
+        Worker->>Redis: Store Celery failure metadata
+    end
+```
+
+`process_project_files` uses `IdempotencyManager` to hash the task name and
+arguments, create an execution record, and move its persistent status through
+`PENDING`, `STARTED`, `SUCCESS`, or `FAILURE`. Celery separately records its
+native result state in Redis. These two stores serve different purposes:
+Redis provides short-lived Celery orchestration data, while PostgreSQL provides
+application-level execution history.
+
+The current tutorial configuration schedules cleanup every 10 seconds and
+calls `cleanup_old_tasks(5)`, meaning execution records older than five seconds
+may disappear quickly from DBeaver. Increase that retention before treating
+`celery_task_executions` as a durable operational audit table.
 
 ## Project Principles
 

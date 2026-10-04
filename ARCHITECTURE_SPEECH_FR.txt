@@ -1,0 +1,490 @@
+SPEECH — ARCHITECTURE DE RAG DOCUMENT INTELLIGENCE
+==================================================
+
+Bonjour à tous,
+
+Aujourd’hui, je vais vous présenter l’architecture de notre projet RAG Document
+Intelligence. Son objectif est de permettre à un utilisateur d’importer des
+documents PDF ou texte, de les transformer en données exploitables, puis de
+poser des questions auxquelles un LLM répond en s’appuyant sur le contenu de
+ces documents.
+
+L’application suit une architecture en plusieurs couches afin de séparer
+l’API, le traitement métier, la persistance, l’intelligence artificielle et
+l’infrastructure.
+
+
+1. LA COUCHE API
+================
+
+Le point d’entrée de l’application est développé avec FastAPI.
+
+FastAPI expose les endpoints permettant de :
+
+- créer ou retrouver un projet ;
+- uploader un document ;
+- traiter un document ;
+- générer les embeddings ;
+- effectuer une recherche sémantique ;
+- générer une réponse RAG ;
+- démarrer certains traitements Celery.
+
+L’application est exécutée avec Uvicorn, qui est le serveur ASGI.
+
+Nous utilisons également :
+
+- python-multipart pour recevoir les fichiers ;
+- aiofiles pour écrire les documents de manière asynchrone ;
+- Pydantic pour valider les requêtes ;
+- pydantic-settings et python-dotenv pour charger la configuration depuis .env.
+
+Les routes restent légères. Elles valident la requête, appellent les
+contrôleurs ou transmettent le traitement à Celery.
+
+
+2. LE TRAITEMENT DES DOCUMENTS
+==============================
+
+Lorsqu’un utilisateur téléverse un document, celui-ci est enregistré dans le
+stockage du projet et un enregistrement Asset est créé dans PostgreSQL.
+
+Le ProcessController sélectionne ensuite le loader correspondant au format :
+
+- PyMuPDF pour les PDF ;
+- TextLoader de LangChain pour les fichiers texte.
+
+Le contenu est extrait puis découpé en chunks. Chaque chunk contient :
+
+- le texte ;
+- les métadonnées ;
+- son ordre dans le document ;
+- la référence vers le projet ;
+- la référence vers le fichier d’origine.
+
+Ces chunks sont enregistrés dans PostgreSQL avant la génération des embeddings.
+
+Cette séparation est importante :
+
+  /process     = document -> texte -> chunks -> PostgreSQL
+  /index/push  = chunks -> embeddings -> base vectorielle
+
+
+3. POSTGRESQL ET SQLALCHEMY
+===========================
+
+La base relationnelle principale est PostgreSQL.
+
+Elle stocke notamment :
+
+- les projets ;
+- les fichiers ou assets ;
+- les chunks ;
+- les exécutions Celery.
+
+L’accès aux données utilise SQLAlchemy 2 avec son API asynchrone. Le driver
+asyncpg permet à FastAPI et aux workers Celery de communiquer avec PostgreSQL
+sans bloquer inutilement les traitements.
+
+Les modifications du schéma sont gérées avec Alembic. Cela permet de versionner
+les changements de base de données :
+
+  make migration-new MESSAGE="describe the schema change"
+  make migrate
+
+psycopg2-binary est également disponible pour les opérations PostgreSQL ou les
+outils nécessitant un driver synchrone.
+
+Les packages Motor, PyMongo et pydantic-mongo sont encore présents dans les
+dépendances pour la compatibilité et l’historique des branches MongoDB. Dans
+cette branche, le flux principal initialisé par main.py utilise PostgreSQL et
+SQLAlchemy.
+
+
+4. LA GÉNÉRATION DES EMBEDDINGS
+===============================
+
+Le NLPController récupère les chunks enregistrés dans PostgreSQL et transmet
+leur texte au provider d’embeddings configuré.
+
+Le projet utilise une abstraction LLMProviderFactory. Elle permet de
+sélectionner une implémentation sans modifier les contrôleurs.
+
+Les providers disponibles comprennent :
+
+- OpenAI ;
+- Cohere ;
+- un serveur Ollama compatible avec l’API OpenAI ;
+- un endpoint cloud compatible avec l’API OpenAI.
+
+La génération de texte et la génération d’embeddings peuvent être configurées
+séparément.
+
+Un embedding est une représentation numérique du texte. Il permet de comparer
+la proximité sémantique entre une question et les morceaux du document.
+
+
+5. QDRANT ET PGVECTOR
+=====================
+
+Les embeddings peuvent être stockés dans deux backends vectoriels.
+
+Le premier est Qdrant, une base spécialisée dans la recherche vectorielle.
+
+Le second est PGVector, une extension PostgreSQL qui permet de stocker et de
+comparer des vecteurs directement dans PostgreSQL.
+
+Le choix est centralisé dans la configuration :
+
+  VECTOR_DB_BACKEND="PGVECTOR"
+
+ou :
+
+  VECTOR_DB_BACKEND="QDRANT"
+
+La VectorDBProviderFactory construit le bon provider. Les contrôleurs utilisent
+une interface commune et ne dépendent donc pas directement de Qdrant ou de
+PGVector.
+
+C’est une application du principe d’inversion de dépendance et du découplage.
+
+
+6. LE FONCTIONNEMENT DU RAG
+===========================
+
+Lorsque l’utilisateur pose une question, le système suit quatre étapes.
+
+Premièrement, la question est transformée en embedding.
+
+Deuxièmement, cet embedding est comparé aux vecteurs des chunks dans Qdrant ou
+PGVector.
+
+Troisièmement, les chunks les plus proches sont récupérés.
+
+Enfin, le TemplateParser construit un prompt contenant :
+
+- les instructions système ;
+- les passages récupérés ;
+- la question de l’utilisateur.
+
+Le LLM génère ensuite une réponse basée sur ce contexte.
+
+  Question
+     |
+     v
+  Embedding de la question
+     |
+     v
+  Recherche vectorielle
+     |
+     v
+  Chunks pertinents
+     |
+     v
+  Construction du prompt
+     |
+     v
+  LLM
+     |
+     v
+  Réponse contextualisée
+
+Les templates sont séparés par langue, ce qui permet notamment de gérer
+l’anglais et l’arabe. NLTK est également disponible dans le projet pour les
+besoins de traitement du langage naturel.
+
+
+7. POURQUOI CELERY EST UTILISÉ
+==============================
+
+Certaines opérations peuvent prendre plusieurs secondes ou plusieurs minutes :
+
+- lire de gros PDF ;
+- créer les chunks ;
+- générer des centaines d’embeddings ;
+- indexer les vecteurs ;
+- envoyer des rapports ;
+- effectuer des tâches de maintenance.
+
+Si ces opérations étaient exécutées directement dans FastAPI, la requête HTTP
+resterait bloquée.
+
+Nous utilisons donc Celery pour déplacer ces traitements vers des workers en
+arrière-plan.
+
+FastAPI appelle par exemple :
+
+  task = process_project_files.delay(...)
+
+La tâche est envoyée à RabbitMQ, qui joue le rôle de broker. Un worker Celery
+récupère ensuite le message et exécute la fonction correspondante.
+
+Les queues permettent de séparer les responsabilités :
+
+- file_processing pour les documents ;
+- data_indexing pour les embeddings ;
+- mail_service_queue pour les rapports ;
+- default pour la maintenance et certaines étapes internes.
+
+Celery s’appuie aussi sur Kombu pour la messagerie, Billiard pour la gestion des
+processus de workers et Vine pour certaines primitives de promesses internes.
+
+
+8. LE WORKFLOW CELERY COMPLET
+=============================
+
+L’endpoint /process-and-push utilise une chaîne Celery.
+
+La première tâche exécute le traitement du document :
+
+  Document -> extraction -> chunks -> PostgreSQL
+
+Si cette étape réussit, Celery transmet son résultat à la seconde étape :
+
+  Chunks -> embeddings -> Qdrant ou PGVector
+
+Si la première étape échoue, l’indexation ne démarre pas.
+
+Le projet configure aussi :
+
+- des retries automatiques ;
+- un délai entre les retries ;
+- une limite de temps ;
+- task_acks_late pour réduire le risque de perte d’une tâche ;
+- la fermeture propre des connexions après exécution.
+
+
+9. RABBITMQ, REDIS, BEAT ET FLOWER
+==================================
+
+Les composants Celery ont chacun un rôle différent.
+
+RabbitMQ transporte les messages entre FastAPI et les workers. Il ne stocke ni
+les documents, ni les chunks, ni les embeddings.
+
+Redis conserve les états et les résultats temporaires des tâches Celery.
+
+Celery Beat déclenche les tâches planifiées, comme le nettoyage des anciennes
+exécutions.
+
+Flower fournit une interface de monitoring permettant de consulter :
+
+- les workers actifs ;
+- les tâches reçues ;
+- les tâches réussies ou échouées ;
+- leurs arguments ;
+- leur temps d’exécution ;
+- les retries.
+
+
+10. L’IDEMPOTENCE ET LE SUIVI DES TÂCHES
+========================================
+
+Le projet possède un IdempotencyManager.
+
+Il génère un hash SHA-256 à partir du nom et des arguments d’une tâche. Il
+enregistre ensuite son exécution dans la table :
+
+  celery_task_executions
+
+Cette table conserve notamment :
+
+- le nom de la tâche ;
+- son identifiant Celery ;
+- le hash des arguments ;
+- son statut ;
+- son résultat ;
+- ses dates de début et de fin.
+
+Les statuts peuvent évoluer ainsi :
+
+  PENDING -> STARTED -> SUCCESS
+                    \-> FAILURE
+
+Il faut distinguer deux niveaux de suivi :
+
+- Redis contient l’état technique temporaire de Celery ;
+- PostgreSQL contient l’historique métier géré par l’application.
+
+Dans la configuration actuelle du tutoriel, Celery Beat déclenche le nettoyage
+toutes les dix secondes et la tâche appelle cleanup_old_tasks(5). Les lignes
+âgées de plus de cinq secondes peuvent donc disparaître rapidement de DBeaver.
+Cette durée doit être augmentée avant d’utiliser la table comme historique
+opérationnel durable.
+
+
+11. DOCKER ET NGINX
+===================
+
+L’ensemble de l’environnement est orchestré avec Docker Compose.
+
+Le projet possède des conteneurs pour :
+
+- FastAPI ;
+- Celery Worker ;
+- Celery Beat ;
+- Flower ;
+- RabbitMQ ;
+- Redis ;
+- PostgreSQL avec PGVector ;
+- Qdrant ;
+- Nginx ;
+- Prometheus ;
+- Grafana ;
+- Node Exporter ;
+- PostgreSQL Exporter.
+
+Nginx agit comme reverse proxy. Il reçoit les requêtes HTTP et les redirige vers
+FastAPI.
+
+Docker permet à toute l’équipe d’utiliser les mêmes versions et la même
+configuration.
+
+
+12. MONITORING AVEC PROMETHEUS ET GRAFANA
+=========================================
+
+L’application expose des métriques grâce à :
+
+- prometheus-client ;
+- starlette-exporter ;
+- fastapi-health.
+
+Prometheus collecte les métriques de FastAPI, PostgreSQL et des conteneurs.
+
+Grafana les transforme en dashboards pour visualiser :
+
+- le nombre de requêtes ;
+- les temps de réponse ;
+- les erreurs ;
+- l’utilisation CPU et mémoire ;
+- l’état de PostgreSQL ;
+- l’état de l’infrastructure.
+
+Node Exporter expose les métriques système et PostgreSQL Exporter expose les
+métriques spécifiques à PostgreSQL.
+
+
+13. LE RÔLE DU MAKEFILE
+=======================
+
+Le Makefile fournit une interface commune pour démarrer le projet :
+
+  make infra
+  make migrate
+  make api
+  make worker
+  make beat
+  make flower
+
+Il évite que chaque développeur mémorise de longues commandes Docker, Uvicorn,
+Celery ou Alembic.
+
+Il garantit également l’utilisation du bon environnement Conda et évite les
+conflits entre Conda, pyenv et virtualenv.
+
+
+14. RÉSUMÉ DES TECHNOLOGIES ET BIBLIOTHÈQUES
+=============================================
+
+API et configuration :
+
+- FastAPI ;
+- Uvicorn ;
+- Pydantic et pydantic-settings ;
+- python-dotenv ;
+- python-multipart ;
+- aiofiles.
+
+Traitement documentaire et NLP :
+
+- PyMuPDF ;
+- LangChain et langchain-community ;
+- NLTK ;
+- tqdm pour l’affichage de progression pendant l’indexation.
+
+LLM et embeddings :
+
+- OpenAI SDK ;
+- Cohere SDK ;
+- Ollama via une API compatible OpenAI ;
+- LLMProviderFactory pour le découplage des providers.
+
+Persistance :
+
+- PostgreSQL ;
+- SQLAlchemy 2 ;
+- asyncpg ;
+- Alembic ;
+- psycopg2-binary ;
+- Motor, PyMongo et pydantic-mongo conservés pour la compatibilité MongoDB.
+
+Recherche vectorielle :
+
+- Qdrant et qdrant-client ;
+- PGVector et la bibliothèque Python pgvector ;
+- VectorDBProviderFactory pour le changement de backend.
+
+Traitements asynchrones :
+
+- Celery ;
+- RabbitMQ ;
+- Redis ;
+- Kombu ;
+- Billiard ;
+- Vine ;
+- Celery Beat ;
+- Flower.
+
+Infrastructure et observabilité :
+
+- Docker et Docker Compose ;
+- Nginx ;
+- Prometheus ;
+- Grafana ;
+- Node Exporter ;
+- PostgreSQL Exporter ;
+- prometheus-client ;
+- starlette-exporter ;
+- fastapi-health.
+
+Outils d’équipe :
+
+- Makefile ;
+- Conda ou Miniconda ;
+- Git et GitHub ;
+- Postman pour tester les endpoints ;
+- DBeaver pour inspecter PostgreSQL.
+
+
+CONCLUSION
+==========
+
+Pour résumer, cette architecture sépare clairement les responsabilités :
+
+- FastAPI expose les endpoints ;
+- les contrôleurs portent la logique applicative ;
+- SQLAlchemy et PostgreSQL gèrent les données métier ;
+- Alembic versionne le schéma ;
+- PyMuPDF et LangChain traitent les documents ;
+- OpenAI, Cohere ou Ollama produisent les embeddings et les réponses ;
+- Qdrant ou PGVector assurent la recherche vectorielle ;
+- Celery exécute les traitements longs ;
+- RabbitMQ transporte les tâches ;
+- Redis conserve leurs résultats ;
+- Beat planifie la maintenance ;
+- Flower supervise les workers ;
+- Docker Compose orchestre l’infrastructure ;
+- Nginx expose l’application ;
+- Prometheus et Grafana assurent l’observabilité ;
+- le Makefile fournit une interface simple à l’équipe.
+
+Le principal avantage de cette architecture est son découplage. Nous pouvons
+changer le LLM, la base vectorielle ou le mode de déploiement sans réécrire
+toute l’application.
+
+
+RÉFÉRENCE DU PROJET
+===================
+
+GitHub :
+https://github.com/mohamed-habib-jaberi/RAGDocumentsIntelligence/tree/17-celery-workflows-and-monitoring
